@@ -1,6 +1,6 @@
 'use client'
 
-import { Apple, ArrowRight, BookOpen, Clock3, HeartPulse, LogIn, Newspaper, Salad, Sparkles } from 'lucide-react'
+import { Apple, ArrowRight, BookOpen, Check, ChevronRight, Clock3, Droplets, Footprints, HeartPulse, LogIn, Newspaper, Salad, ShieldCheck, Sparkles, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
@@ -55,30 +55,46 @@ export default function PublicHome({ onLogin }: { onLogin: () => void }) {
           <a href="#artikel">Artikel</a>
           <a href="#berita">Berita</a>
         </nav>
-        <button className="public-login" onClick={onLogin}><LogIn size={16} /> Masuk</button>
+        <button className="public-login" onClick={onLogin}><LogIn size={16} /> Masuk <ChevronRight size={14} /></button>
       </header>
 
       <section className="public-hero-home">
         <div className="public-hero-copy">
-          <span className="public-kicker"><Sparkles size={14} /> KESEHATANMU, SETIAP HARI</span>
-          <h1>Pahami tubuhmu.<br />Bangun hidup yang lebih sehat.</h1>
-          <p>Catat nutrisi, pantau aktivitas, dan temukan wawasan kesehatan tepercaya dalam satu tempat.</p>
+          <span className="public-kicker"><Sparkles size={14} /> WELLNESS YANG TERASA PERSONAL</span>
+          <h1>Lebih paham tubuhmu.<br /><em>Lebih sehat</em> setiap hari.</h1>
+          <p>Satu ruang sederhana untuk memahami nutrisi, membangun kebiasaan baik, dan melihat progres yang benar-benar berarti.</p>
           <div className="public-hero-actions">
-            <button onClick={onLogin}>Mulai sekarang <ArrowRight size={17} /></button>
-            <a href="#artikel">Baca artikel kesehatan</a>
+            <button onClick={onLogin}>Mulai perjalananmu <ArrowRight size={17} /></button>
+            <a href="#fitur"><span>Jelajahi fitur</span> <ChevronRight size={15} /></a>
+          </div>
+          <div className="public-hero-proof">
+            <div className="proof-faces" aria-hidden="true"><span>AD</span><span>RN</span><span>+</span></div>
+            <p><strong>Dibuat untuk hidup nyata</strong><span>Personal, praktis, dan mudah dijalani.</span></p>
           </div>
         </div>
-        <div className="public-health-card" aria-label="Pratinjau fitur NutriLife">
-          <div className="health-card-head"><span><HeartPulse size={20} /></span><div><small>RINGKASAN HARIAN</small><strong>Progress kesehatan</strong></div></div>
-          <div className="health-ring"><div><strong>72%</strong><span>target hari ini</span></div></div>
-          <div className="health-macros"><span><i className="macro-green" /> Protein <b>86g</b></span><span><i className="macro-gold" /> Karbo <b>142g</b></span><span><i className="macro-purple" /> Lemak <b>42g</b></span></div>
+        <div className="public-hero-visual" aria-label="Pratinjau dashboard NutriLife">
+          <div className="hero-orbit hero-orbit-one" aria-hidden="true" />
+          <div className="hero-orbit hero-orbit-two" aria-hidden="true" />
+          <div className="public-health-card">
+            <div className="health-card-head"><span><HeartPulse size={20} /></span><div><small>RINGKASAN HARIAN</small><strong>Halo, Andi! <span>👋</span></strong></div><em><ShieldCheck size={15} /> Optimal</em></div>
+            <div className="health-overview">
+              <div className="health-ring"><div><strong>72%</strong><span>target tercapai</span></div></div>
+              <div className="health-stats">
+                <div><span><Footprints size={15} /></span><p><small>LANGKAH</small><strong>6.420</strong></p><em>+12%</em></div>
+                <div><span className="water"><Droplets size={15} /></span><p><small>AIR MINUM</small><strong>1,8 L</strong></p><em>6 gelas</em></div>
+              </div>
+            </div>
+            <div className="health-macros"><span><i className="macro-green" /> Protein <b>86g</b><small>72% target</small></span><span><i className="macro-gold" /> Karbo <b>142g</b><small>65% target</small></span><span><i className="macro-purple" /> Lemak <b>42g</b><small>70% target</small></span></div>
+          </div>
+          <div className="hero-floating-card hero-floating-top"><span><TrendingUp size={16} /></span><p><small>STREAK HARIAN</small><strong>7 hari berturut-turut</strong></p></div>
+          <div className="hero-floating-card hero-floating-bottom"><span><Check size={16} /></span><p><small>TARGET TERBARU</small><strong>Protein tercapai</strong></p></div>
         </div>
       </section>
 
       <section className="public-feature-strip" id="fitur">
-        <div><span><Salad size={21} /></span><strong>Catat nutrisi</strong><small>Pantau kalori dan makro harian.</small></div>
-        <div><span><HeartPulse size={21} /></span><strong>Lihat perkembangan</strong><small>Target kesehatan dalam satu dashboard.</small></div>
-        <div><span><BookOpen size={21} /></span><strong>Belajar hidup sehat</strong><small>Artikel dari tim NutriLife.</small></div>
+        <div><span><Salad size={21} /></span><strong>Nutrisi tanpa ribet</strong><small>Kalori dan makro tercatat rapi dalam hitungan detik.</small><b>01</b></div>
+        <div><span><HeartPulse size={21} /></span><strong>Progres yang terlihat</strong><small>Pahami pola dan perkembanganmu dari hari ke hari.</small><b>02</b></div>
+        <div><span><BookOpen size={21} /></span><strong>Insight tepercaya</strong><small>Konten kesehatan yang relevan dan mudah diterapkan.</small><b>03</b></div>
       </section>
 
       <section className="public-home-section" id="artikel">
@@ -110,8 +126,8 @@ export default function PublicHome({ onLogin }: { onLogin: () => void }) {
         </div>
       </section>
 
-      <section className="public-cta"><div><span>SIAP MEMULAI?</span><h2>Jadikan kebiasaan sehat lebih mudah.</h2><p>Masuk untuk mengakses dashboard nutrisi personalmu.</p></div><button onClick={onLogin}>Masuk ke NutriLife <ArrowRight size={17} /></button></section>
-      <footer className="public-footer"><Link href="/" className="public-brand"><span><Apple size={18} /></span>Nutri<b>Life</b></Link><p>Informasi kesehatan untuk mendukung kebiasaan yang lebih baik.</p><Link href="/articles">Artikel & Berita</Link></footer>
+      <section className="public-cta"><div><span>MULAI DARI HARI INI</span><h2>Versi terbaikmu dimulai<br />dari satu kebiasaan kecil.</h2><p>Bangun pola hidup sehat yang realistis, personal, dan berkelanjutan bersama NutriLife.</p><div className="public-cta-checks"><span><Check size={14} /> Mudah digunakan</span><span><Check size={14} /> Progres personal</span></div></div><button onClick={onLogin}>Mulai sekarang <ArrowRight size={17} /></button></section>
+      <footer className="public-footer"><div><Link href="/" className="public-brand"><span><Apple size={18} /></span>Nutri<b>Life</b></Link><p>Teman bertumbuh untuk hidup yang lebih sehat, setiap hari.</p></div><nav aria-label="Navigasi footer"><a href="#fitur">Fitur</a><Link href="/articles">Artikel</Link><a href="#berita">Berita</a></nav><small>© {new Date().getFullYear()} NutriLife</small></footer>
     </main>
   )
 }
