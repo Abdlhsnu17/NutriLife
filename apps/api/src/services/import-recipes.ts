@@ -1,4 +1,4 @@
-import 'dotenv/config'
+import { projectRoot } from '../config/environment.js'
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
@@ -41,7 +41,7 @@ function asNonNegativeInteger(value: string) {
 async function main() {
   const cliPath = process.argv.slice(2).find(argument => !argument.startsWith('--'))
   const dryRun = process.argv.includes('--dry-run')
-  const csvPath = resolve(cliPath ?? process.env.RECIPE_CSV_PATH ?? '../Indonesian_Food_Recipes.csv')
+  const csvPath = resolve(projectRoot, cliPath ?? process.env.RECIPE_CSV_PATH ?? '../Indonesian_Food_Recipes.csv')
   const csv = await readFile(csvPath, 'utf8')
   const [headers, ...rows] = parseCsv(csv.replace(/^\uFEFF/, ''))
   if (!headers || expectedHeaders.some((header, index) => headers[index] !== header)) {

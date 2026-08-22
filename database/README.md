@@ -4,9 +4,9 @@ Database menggunakan MySQL 8. Jalankan dari root project:
 
 Isi folder ini:
 
-- `schema.sql`: struktur lengkap untuk database baru.
-- `migrate.sql`: pembaruan untuk database lama.
-- `setup-local-mysql.sql`: pembuatan database dan akun MySQL lokal; dijalankan oleh `npm run db:setup-local`.
+- `schema/schema.sql`: struktur lengkap untuk database baru.
+- `migrations/migrate.sql`: pembaruan untuk database lama.
+- `schema/setup-local-mysql.sql`: pembuatan database dan akun MySQL lokal; dijalankan oleh `npm run db:setup-local`.
 - `README.md`: panduan setup dan pemeliharaan database.
 
 ```bash
@@ -44,7 +44,7 @@ atau porsi pada dataset. Lokasi CSV juga dapat diatur melalui `FASTFOOD_CSV_PATH
 File notebook Python saja belum memuat baris data. Unduh/letakkan `fastfood.csv`
 secara lokal, jalankan migrasi, lalu jalankan perintah impor di atas.
 
-`schema.sql` otomatis dijalankan oleh Docker saat volume dibuat pertama kali. `migrate.sql` aman dijalankan untuk volume lama dan menambahkan tabel/enum yang belum ada. Akun awal untuk dashboard adalah `demo-user`.
+`schema/schema.sql` otomatis dijalankan oleh Docker saat volume dibuat pertama kali. `migrations/migrate.sql` aman dijalankan untuk volume lama dan menambahkan tabel/enum yang belum ada. Akun awal untuk dashboard adalah `demo-user`.
 
 Alur lupa password terdiri dari dua tahap: masukkan email untuk membuat token reset
 yang berlaku 15 menit, lalu masukkan password baru pada form berikutnya. Saat mode

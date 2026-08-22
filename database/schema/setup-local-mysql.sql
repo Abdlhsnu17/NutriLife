@@ -1,5 +1,5 @@
 -- Run this with a local MySQL admin account before using NutriLife on port 3306.
--- Example: mysql -u root -p < database/setup-local-mysql.sql
+-- Example: mysql -u root -p < database/schema/setup-local-mysql.sql
 
 CREATE DATABASE IF NOT EXISTS `nutrilife`
   DEFAULT CHARACTER SET utf8mb4

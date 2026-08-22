@@ -29,8 +29,8 @@ async function main() {
   })
 
   try {
-    const setupSql = await readFile('database/setup-local-mysql.sql', 'utf8')
-    const schemaSql = await readFile('database/schema.sql', 'utf8')
+    const setupSql = await readFile('database/schema/setup-local-mysql.sql', 'utf8')
+    const schemaSql = await readFile('database/schema/schema.sql', 'utf8')
     await connection.query(setupSql)
     await connection.query(schemaSql)
     console.log(`MySQL lokal siap: ${process.env.DB_USER ?? 'nutrilife'}@${process.env.DB_HOST ?? '127.0.0.1'}:${process.env.DB_PORT ?? 3306}/${process.env.DB_NAME ?? 'nutrilife'}`)

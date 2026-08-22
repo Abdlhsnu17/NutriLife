@@ -1,4 +1,4 @@
-import 'dotenv/config'
+import { projectRoot } from '../config/environment.js'
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
@@ -46,7 +46,7 @@ function itemKind(name: string): 'FOOD' | 'DRINK' {
 }
 
 async function main() {
-  const csvPath = resolve(process.argv[2] ?? process.env.FASTFOOD_CSV_PATH ?? 'fastfood.csv')
+  const csvPath = resolve(projectRoot, process.argv[2] ?? process.env.FASTFOOD_CSV_PATH ?? 'fastfood.csv')
   const csv = await readFile(csvPath, 'utf8')
   const [rawHeaders, ...rows] = parseCsv(csv.replace(/^\uFEFF/, ''))
   const headers = rawHeaders?.map(header => header.trim().toLowerCase()) ?? []

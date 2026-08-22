@@ -1,93 +1,26 @@
 import cors from 'cors';
-import 'dotenv/config';
 import express from 'express';
 import helmet from 'helmet';
-import mysql, { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
-import { createHash, createHmac, randomBytes, randomUUID, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
+import { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { promisify } from 'node:util';
+import { join } from 'node:path';
 import { z } from 'zod';
 
-const port = Number(process.env.PORT ?? 4004)
-const serverUrl = process.env.SERVER_URL ?? `http://localhost:${port}`
-const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000'
-const dbHost = process.env.DB_HOST ?? 'localhost'
-const dbPort = Number(process.env.DB_PORT ?? 3306)
-const dbUser = process.env.DB_USER ?? 'nutrilife'
-const dbName = process.env.DB_NAME ?? 'nutrilife'
-const dbFallbackHost = process.env.DB_FALLBACK_HOST ?? 'localhost'
-const dbFallbackPort = Number(process.env.DB_FALLBACK_PORT ?? 3307)
-const dbFallbackUser = process.env.DB_FALLBACK_USER ?? dbUser
-const dbFallbackName = process.env.DB_FALLBACK_NAME ?? dbName
-const uploadDir = process.env.UPLOAD_DIR ?? 'uploads'
-const jwtSecret = process.env.JWT_SECRET || 'nutrilife-development-secret-change-me'
-const scrypt = promisify(scryptCallback)
-
-const dbCluster = mysql.createPoolCluster({
-  canRetry: true,
-  defaultSelector: 'ORDER',
-  removeNodeErrorCount: 1,
-  restoreNodeTimeout: 5000,
-})
-
-dbCluster.add('primary', {
-  host: dbHost, port: dbPort, user: dbUser,
-  password: process.env.DB_PASSWORD ?? 'nutrilife', database: dbName,
-  connectionLimit: 5, connectTimeout: 3000, decimalNumbers: true,
-})
-dbCluster.add('docker-fallback', {
-  host: dbFallbackHost, port: dbFallbackPort, user: dbFallbackUser,
-  password: process.env.DB_FALLBACK_PASSWORD ?? process.env.DB_PASSWORD ?? 'nutrilife',
-  database: dbFallbackName,
-  connectionLimit: 5, connectTimeout: 3000, decimalNumbers: true,
-})
-
-// ORDER always tries the local/primary MySQL node before the Docker fallback.
-// Offline nodes are retried so the application automatically returns to primary.
-const db = dbCluster.of('*', 'ORDER')
-
-function databaseErrorMessage(error: unknown) {
-  const code = (error as { code?: string }).code
-  const message = error instanceof Error ? error.message : 'Kesalahan database tidak diketahui.'
-  if (code === 'ER_ACCESS_DENIED_ERROR') {
-    return `Akses MySQL ditolak untuk ${dbUser}@${dbHost}:${dbPort}/${dbName}. Jalankan npm run db:setup-local atau sesuaikan DB_USER/DB_PASSWORD di .env.`
-  }
-  if (code === 'ER_BAD_DB_ERROR') {
-    return `Database ${dbName} belum ada di MySQL lokal. Jalankan npm run db:setup-local.`
-  }
-  if (code === 'ECONNREFUSED' || code === 'POOL_NONEONLINE') {
-    return `MySQL belum tersambung. Pastikan MySQL lokal aktif di ${dbHost}:${dbPort}, atau jalankan fallback Docker dengan npm run db:up.`
-  }
-  return message
-}
-
-type Role = 'USER' | 'NUTRITIONIST' | 'ADMIN'
-type AuthPayload = { sub: string; email: string; role: Role; iat: number; exp: number }
-type AuthRequest = express.Request & { auth?: AuthPayload }
-interface UserRow extends RowDataPacket { id: string; email: string; name: string; role: Role; passwordHash: string | null; avatarUrl: string | null }
-interface MealRow extends RowDataPacket { id: string; userId: string; mealType: 'BREAKFAST' | 'LUNCH' | 'SNACK' | 'DINNER'; name: string; calories: number; protein: number; carbs: number; fat: number; loggedAt: Date }
-interface NutritionRow extends RowDataPacket { calories: number; protein: number; carbs: number; fat: number }
-interface GoalRow extends RowDataPacket { type: 'CALORIES' | 'WATER' | 'STEPS' | 'WEIGHT' | 'PROTEIN' | 'CARBS' | 'FAT'; target: number; unit: string }
-interface TotalRow extends RowDataPacket { total: number }
-interface WeightRow extends RowDataPacket { weight: number; loggedAt: Date }
-interface WeeklyActivityRow extends RowDataPacket { day: string; steps: number }
-interface ResetTokenRow extends RowDataPacket { id: string; userId: string }
-interface RecipeRow extends RowDataPacket {
-  id: string; title: string; category: string; ingredients: string; steps: string
-  totalIngredients: number; totalSteps: number
-}
-interface NutritionItemRow extends RowDataPacket {
-  id: string; name: string; brand: string; kind: 'FOOD' | 'DRINK'
-  calories: number; protein: number; carbs: number; fat: number
-  fiber: number; sugar: number; sodium: number
-}
+import { databaseConfig, frontendUrl, port, serverUrl, uploadDir, uploadPublicPath } from '../config/environment.js'
+import { requireAuth } from '../middleware/auth.js'
+import { db, databaseErrorMessage } from '../repositories/database.js'
+import type { GoalRow, MealRow, NutritionItemRow, NutritionRow, RecipeRow, ResetTokenRow, TotalRow, UserRow, WeeklyActivityRow, WeightRow } from '../types/database.js'
+import type { AuthRequest } from '../types/http.js'
+import { createSessionToken, hashPassword, publicUser, verifyPassword } from '../utils/auth.js'
+import { activitySchema, changePasswordSchema, forgotSchema, goalsSchema, loginSchema, mealSchema, nutritionItemQuerySchema, profileSchema, recipeQuerySchema, registerSchema, resetSchema, staffCreateSchema, staffUpdateSchema, waterSchema, weightSchema } from '../validators/request.js'
 
 const app = express()
 app.use(helmet())
 app.use(cors({ origin: frontendUrl }))
 app.use(express.json({ limit: '10mb' }))
 // serve uploaded files
-app.use(`/${uploadDir}`, express.static(uploadDir, {
+app.use(uploadPublicPath, express.static(uploadDir, {
   setHeaders(response) {
     // The frontend and API use different ports, so profile images must be
     // embeddable across origins even though Helmet protects the API itself.
@@ -95,108 +28,6 @@ app.use(`/${uploadDir}`, express.static(uploadDir, {
   },
 }))
 
-const emailSchema = z.string().trim().email().max(191).transform(value => value.toLowerCase())
-const passwordSchema = z.string().min(8).max(72).regex(/[A-Za-z]/, 'Password harus memiliki huruf').regex(/\d/, 'Password harus memiliki angka')
-const registerSchema = z.object({ name: z.string().trim().min(2).max(120), email: emailSchema, password: passwordSchema })
-const loginSchema = z.object({ email: emailSchema, password: z.string().min(1).max(72) })
-const forgotSchema = z.object({ email: emailSchema })
-const resetSchema = z.object({ token: z.string().min(32).max(200), password: passwordSchema })
-const profileSchema = z.object({ name: z.string().trim().min(2).max(120), email: emailSchema })
-const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1).max(72),
-  newPassword: passwordSchema,
-}).refine(value => value.currentPassword !== value.newPassword, {
-  message: 'Password baru harus berbeda dari password saat ini.', path: ['newPassword'],
-})
-const staffRoleSchema = z.enum(['NUTRITIONIST', 'ADMIN'])
-const staffCreateSchema = z.object({
-  name: z.string().trim().min(2).max(120),
-  email: emailSchema,
-  password: passwordSchema,
-  role: staffRoleSchema,
-})
-const staffUpdateSchema = z.object({
-  name: z.string().trim().min(2).max(120).optional(),
-  email: emailSchema.optional(),
-  password: passwordSchema.optional(),
-  role: staffRoleSchema.optional(),
-}).refine(value => Object.keys(value).length > 0, { message: 'Tidak ada perubahan.' })
-const goalsSchema = z.object({ goals: z.object({
-  CALORIES: z.number().positive().max(20000), WATER: z.number().positive().max(20000),
-  STEPS: z.number().positive().max(200000), WEIGHT: z.number().positive().max(500),
-  PROTEIN: z.number().positive().max(1000), CARBS: z.number().positive().max(1000), FAT: z.number().positive().max(1000),
-}) })
-const mealSchema = z.object({
-  mealType: z.enum(['BREAKFAST', 'LUNCH', 'SNACK', 'DINNER']), name: z.string().trim().min(2).max(120),
-  calories: z.number().int().nonnegative().max(10000), protein: z.number().nonnegative().max(1000).default(0),
-  carbs: z.number().nonnegative().max(1000).default(0), fat: z.number().nonnegative().max(1000).default(0),
-})
-const waterSchema = z.object({ amountMl: z.number().int().positive().max(5000).default(250) })
-const activitySchema = z.object({ steps: z.number().int().nonnegative().max(200000), duration: z.number().int().nonnegative().max(1440).default(0), calories: z.number().int().nonnegative().max(10000).default(0), activityType: z.string().trim().min(2).max(120).default('Berjalan') })
-const weightSchema = z.object({ weight: z.number().positive().max(500) })
-const recipeQuerySchema = z.object({
-  q: z.string().trim().min(2).max(80),
-  limit: z.coerce.number().int().min(1).max(20).default(8),
-})
-const nutritionItemQuerySchema = z.object({
-  q: z.string().trim().min(2).max(80),
-  limit: z.coerce.number().int().min(1).max(20).default(8),
-})
-
-function publicUser(user: UserRow) {
-  return { id: user.id, email: user.email, name: user.name, role: user.role, avatarUrl: user.avatarUrl ?? null }
-}
-
-async function hashPassword(password: string) {
-  const salt = randomBytes(16).toString('hex')
-  const derived = await scrypt(password, salt, 64) as Buffer
-  return `scrypt$${salt}$${derived.toString('hex')}`
-}
-
-async function verifyPassword(password: string, storedHash: string) {
-  const [algorithm, salt, hash] = storedHash.split('$')
-  if (algorithm !== 'scrypt' || !salt || !hash) return false
-  const expected = Buffer.from(hash, 'hex')
-  const actual = await scrypt(password, salt, expected.length) as Buffer
-  return expected.length === actual.length && timingSafeEqual(expected, actual)
-}
-
-function encode(value: object) { return Buffer.from(JSON.stringify(value)).toString('base64url') }
-
-function createSessionToken(user: UserRow) {
-  const now = Math.floor(Date.now() / 1000)
-  const header = encode({ alg: 'HS256', typ: 'JWT' })
-  const payload = encode({ sub: user.id, email: user.email, role: user.role, iat: now, exp: now + 60 * 60 * 24 * 7 })
-  const signature = createHmac('sha256', jwtSecret).update(`${header}.${payload}`).digest('base64url')
-  return `${header}.${payload}.${signature}`
-}
-
-function verifySessionToken(token: string): AuthPayload | null {
-  const [header, payload, signature] = token.split('.')
-  if (!header || !payload || !signature) return null
-  const expected = createHmac('sha256', jwtSecret).update(`${header}.${payload}`).digest()
-  const actual = Buffer.from(signature, 'base64url')
-  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null
-  try {
-    const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as AuthPayload
-    if (!decoded.sub || !decoded.exp || decoded.exp <= Math.floor(Date.now() / 1000)) return null
-    return decoded
-  } catch { return null }
-}
-
-async function requireAuth(req: AuthRequest, res: express.Response, next: express.NextFunction) {
-  const [scheme, token] = (req.headers.authorization ?? '').split(' ')
-  const payload = scheme === 'Bearer' && token ? verifySessionToken(token) : null
-  if (!payload) return res.status(401).json({ error: 'UNAUTHORIZED', message: 'Silakan login kembali.' })
-  try {
-    // Refresh the role from MySQL on every protected request so role changes and
-    // deleted accounts take effect immediately, even when an old JWT still exists.
-    const [users] = await db.execute<UserRow[]>('SELECT id, email, name, role, passwordHash FROM `User` WHERE id = ? LIMIT 1', [payload.sub])
-    if (!users[0]) return res.status(401).json({ error: 'UNAUTHORIZED', message: 'Akun tidak ditemukan.' })
-    req.auth = { ...payload, email: users[0].email, role: users[0].role }
-    return next()
-  } catch (error) { return next(error) }
-}
 
 app.get('/health', async (_req, res) => {
   try { await db.query('SELECT 1'); return res.json({ status: 'ok', service: 'nutrilife-api', database: 'connected' }) }
@@ -430,8 +261,9 @@ app.post('/api/v1/uploads', async (req: AuthRequest, res, next) => {
     if (buffer.length > 5 * 1024 * 1024) return res.status(413).json({ error: 'FILE_TOO_LARGE', message: 'Ukuran gambar maksimal 5 MB.' })
     const safeName = (fileName ?? 'gambar').replace(/\.[^.]+$/, '').replace(/[^a-z0-9_-]/gi, '-').slice(0, 80) || 'gambar'
     const filename = `${randomUUID()}-${safeName}.${ext}`
-    await writeFile(`${uploadDir}/${filename}`, buffer)
-    const url = `${serverUrl}/${uploadDir}/${filename}`
+    await mkdir(uploadDir, { recursive: true })
+    await writeFile(join(uploadDir, filename), buffer)
+    const url = `${serverUrl}${uploadPublicPath}/${filename}`
     return res.status(201).json({ url, filename })
   } catch (error) { return next(error) }
 })
@@ -471,8 +303,8 @@ app.post('/api/v1/users/:userId/avatar', async (req: AuthRequest, res, next) => 
     const safeName = (fileName ?? 'foto-profil').replace(/\.[^.]+$/, '').replace(/[^a-z0-9_-]/gi, '-').slice(0, 60) || 'foto-profil'
     const filename = `${randomUUID()}-${safeName}.${extensions[match[1]]}`
     await mkdir(uploadDir, { recursive: true })
-    await writeFile(`${uploadDir}/${filename}`, buffer)
-    const avatarUrl = `${serverUrl}/${uploadDir}/${filename}`
+    await writeFile(join(uploadDir, filename), buffer)
+    const avatarUrl = `${serverUrl}${uploadPublicPath}/${filename}`
     await db.execute('UPDATE `User` SET avatarUrl = ? WHERE id = ?', [avatarUrl, req.auth!.sub])
     const [users] = await db.execute<UserRow[]>('SELECT id, email, name, role, passwordHash, avatarUrl FROM `User` WHERE id = ?', [req.auth!.sub])
     return res.json({ user: publicUser(users[0]) })
@@ -792,7 +624,7 @@ async function showStartupInfo() {
        FROM information_schema.COLUMNS
        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'User' AND COLUMN_NAME = 'avatarUrl'
        LIMIT 1`,
-      [dbName],
+      [databaseConfig.primary.database],
     )
     if (!avatarColumns[0]) {
       await db.execute('ALTER TABLE `User` ADD COLUMN avatarUrl VARCHAR(1024) NULL AFTER passwordHash')
@@ -819,7 +651,7 @@ async function showStartupInfo() {
        FROM information_schema.COLUMNS
        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'Article' AND COLUMN_NAME = 'imageUrl'
        LIMIT 1`,
-      [dbName],
+      [databaseConfig.primary.database],
     )
     if (!imageUrlColumns[0]) {
       await db.execute('ALTER TABLE Article ADD COLUMN imageUrl VARCHAR(1024) NULL AFTER content')
@@ -836,10 +668,15 @@ async function showStartupInfo() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `)
   } catch (err) { console.warn('Gagal memastikan tabel konten:', err) }
-  const databaseRoute = `${dbUser}@${dbHost}:${dbPort}/${dbName} → ${dbFallbackUser}@${dbFallbackHost}:${dbFallbackPort}/${dbFallbackName} (Docker)`
+  const { primary, fallback } = databaseConfig
+  const databaseRoute = `${primary.user}@${primary.host}:${primary.port}/${primary.database} → ${fallback.user}@${fallback.host}:${fallback.port}/${fallback.database} (Docker)`
   console.log(['', 'NutriLife API siap', `🖥️  server    ${serverUrl}`, `🗄️  database  ${databaseRoute} (${databaseStatus})`, `🔐  auth      JWT 7 hari`, `🩺  health    ${serverUrl}/health`, `📦  uploads   ${uploadsStatus}`, ''].join('\n'))
   if (!process.env.JWT_SECRET) console.warn('⚠️  auth      JWT_SECRET belum diatur; memakai secret development')
   if (databaseError) console.warn(`⚠️  database  ${databaseError}`)
 }
 
-app.listen(port, () => { void showStartupInfo() })
+export function startServer() {
+  return app.listen(port, () => { void showStartupInfo() })
+}
+
+export { app }

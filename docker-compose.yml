@@ -12,7 +12,7 @@ services:
       - '3307:3306'
     volumes:
       - nutrilife_mysql:/var/lib/mysql
-      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+      - ./database/schema/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
     healthcheck:
       test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-unutrilife', '-pnutrilife']
       interval: 5s
