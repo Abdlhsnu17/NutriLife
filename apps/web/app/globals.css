@@ -1,6 +1,5 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
-@import 'shadcn/tailwind.css';
 nav .nav-item.admin-link { text-decoration:none; }
 nav .nav-item.admin-link:hover, nav .nav-item.admin-link.active { background:#e9f5ef;color:var(--brand-dark); }
 @custom-variant dark (&:is(.dark *));
