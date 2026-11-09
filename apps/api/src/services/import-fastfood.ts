@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import mysql from 'mysql2/promise'
+import { databaseConfig } from '../config/environment.js'
 
 const requiredHeaders = ['restaurant', 'item', 'calories', 'total_fat', 'total_carb', 'protein'] as const
 
@@ -68,11 +69,7 @@ async function main() {
     ]
   })
 
-  const db = await mysql.createConnection({
-    host: process.env.DB_HOST ?? 'localhost', port: Number(process.env.DB_PORT ?? 3306),
-    user: process.env.DB_USER ?? 'nutrilife', password: process.env.DB_PASSWORD ?? 'nutrilife',
-    database: process.env.DB_NAME ?? 'nutrilife', charset: 'utf8mb4',
-  })
+  const db = await mysql.createConnection({ ...databaseConfig, charset: 'utf8mb4' })
 
   try {
     const batchSize = 250

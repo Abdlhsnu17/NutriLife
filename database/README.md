@@ -6,17 +6,14 @@ Isi folder ini:
 
 - `schema/schema.sql`: struktur lengkap untuk database baru.
 - `migrations/migrate.sql`: pembaruan untuk database lama.
-- `schema/setup-local-mysql.sql`: pembuatan database dan akun MySQL lokal; dijalankan oleh `npm run db:setup-local`.
 - `README.md`: panduan setup dan pemeliharaan database.
 
-```bash
-npm run db:setup-local
-npm run dev:all
-```
-
-Perintah `db:setup-local` menyiapkan MySQL lokal di `127.0.0.1:3306` sebagai
-koneksi utama aplikasi. Perintah ini meminta password admin MySQL lokal, biasanya
-akun `root`, lalu membuat database `nutrilife`, user `nutrilife`, dan tabel awal.
+Backend menggunakan database MySQL lokal yang sudah tersedia di phpMyAdmin.
+Simpan satu konfigurasi lokal di `.env` root project (salin dari `.env.example`).
+API dan perintah `db:check` membaca `DB_HOST`, `DB_PORT`, `DB_USER`,
+`DB_PASSWORD`, dan `DB_NAME` dari file itu. `npm run dev:backend` langsung
+menjalankan API; `npm run db:setup-local` hanya diperlukan untuk menerapkan
+schema secara manual, dan akun aplikasi harus memiliki izin DDL pada database.
 Untuk mengecek koneksi MySQL lokal dari konfigurasi `.env`, jalankan
 `npm run db:check`.
 

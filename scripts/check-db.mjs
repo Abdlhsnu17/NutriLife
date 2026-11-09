@@ -1,5 +1,5 @@
-import 'dotenv/config'
 import mysql from 'mysql2/promise'
+import { databaseConfig } from './db-config.mjs'
 
 async function check(label, config) {
   try {
@@ -15,10 +15,4 @@ async function check(label, config) {
   }
 }
 
-await check('MySQL phpMyAdmin/local', {
-  host: process.env.DB_HOST ?? '127.0.0.1',
-  port: Number(process.env.DB_PORT ?? 3306),
-  user: process.env.DB_USER ?? 'nutrilife',
-  password: process.env.DB_PASSWORD ?? 'nutrilife',
-  database: process.env.DB_NAME ?? 'nutrilife',
-})
+await check('MySQL phpMyAdmin/local', databaseConfig)

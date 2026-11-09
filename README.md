@@ -64,13 +64,7 @@ Frontend dan backend dijalankan sebagai proses terpisah. Backend terhubung langs
    cp .env.example .env
    ```
 
-2. Siapkan database MySQL lokal melalui phpMyAdmin.
-
-   ```bash
-   npm run db:setup-local
-   ```
-
-   Perintah ini meminta password Admin MySQL, lalu membuat database, user aplikasi, tabel, dan data awal pada `127.0.0.1:3306`.
+2. Pastikan layanan MySQL aktif dan database `nutrilife` tersedia di phpMyAdmin. Atur `DB_USER` dan `DB_PASSWORD` di `.env` sesuai akun MySQL yang punya akses. Backend memakai koneksi ini langsung saat dijalankan.
 
 3. Pastikan database dapat diakses.
 
@@ -220,3 +214,6 @@ Untuk production, gunakan `JWT_SECRET` acak yang kuat, origin HTTPS yang benar, 
 ## Dokumentasi produk
 
 Kebutuhan produk, persona, ruang lingkup, acceptance criteria, metrik, dan roadmap tersedia di [docs/PRD.md](docs/PRD.md).
+
+Email: admin@nutrilife.com
+Password awal: NutriLifeAdmin2026!

@@ -192,3 +192,17 @@ INSERT IGNORE INTO `Article` (`id`, `slug`, `title`, `category`, `excerpt`, `con
 
 UPDATE `Article` SET `category` = 'Resep' WHERE `slug` = 'peluncuran-fitur-pelacakan-resep' AND (`category` IS NULL OR `category` = '');
 UPDATE `Article` SET `category` = 'Makanan' WHERE `slug` = 'pembaruan-data-nutrisi' AND (`category` IS NULL OR `category` = '');
+
+-- Development administrator seed; change the password after first login.
+INSERT INTO `User` (`id`, `email`, `name`, `passwordHash`, `role`)
+VALUES (
+  '00000000-0000-4000-8000-000000000001',
+  'admin@nutrilife.com',
+  'Admin NutriLife',
+  'scrypt$bc38541def0cf34eeb7995cd071a61ed$80e56558053dbfee6ce85746c996514f94cff160eef11c09a0ff84859083b2fe1221349bdfe6c11d1fa8a67fb2b9ff1107fec2abfdf56c50824919c6f0a3f167',
+  'ADMIN'
+)
+ON DUPLICATE KEY UPDATE
+  `name` = VALUES(`name`),
+  `passwordHash` = VALUES(`passwordHash`),
+  `role` = 'ADMIN';
