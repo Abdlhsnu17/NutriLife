@@ -615,16 +615,17 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
 
 async function showStartupInfo() {
   let databaseStatus = 'tidak terhubung'; let databaseError = ''; let uploadsStatus = `siap (${uploadDir})`
-  try { await db.query('SELECT 1'); databaseStatus = 'terhubung' } catch (error) { databaseError = databaseErrorMessage(error) }
+  let databaseConnected = false
+  try { await db.query('SELECT 1'); databaseStatus = 'terhubung'; databaseConnected = true } catch (error) { databaseError = databaseErrorMessage(error) }
   try { await mkdir(uploadDir, { recursive: true }) } catch (error) { uploadsStatus = `gagal disiapkan (${error instanceof Error ? error.message : 'kesalahan tidak diketahui'})` }
   // Keep content tables available for existing database volumes as well.
-  try {
+  if (databaseConnected) try {
     const [avatarColumns] = await db.execute<RowDataPacket[]>(
       `SELECT 1
        FROM information_schema.COLUMNS
        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'User' AND COLUMN_NAME = 'avatarUrl'
        LIMIT 1`,
-      [databaseConfig.primary.database],
+      [databaseConfig.database],
     )
     if (!avatarColumns[0]) {
       await db.execute('ALTER TABLE `User` ADD COLUMN avatarUrl VARCHAR(1024) NULL AFTER passwordHash')
@@ -651,7 +652,7 @@ async function showStartupInfo() {
        FROM information_schema.COLUMNS
        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'Article' AND COLUMN_NAME = 'imageUrl'
        LIMIT 1`,
-      [databaseConfig.primary.database],
+      [databaseConfig.database],
     )
     if (!imageUrlColumns[0]) {
       await db.execute('ALTER TABLE Article ADD COLUMN imageUrl VARCHAR(1024) NULL AFTER content')
@@ -668,8 +669,7 @@ async function showStartupInfo() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `)
   } catch (err) { console.warn('Gagal memastikan tabel konten:', err) }
-  const { primary, fallback } = databaseConfig
-  const databaseRoute = `${primary.user}@${primary.host}:${primary.port}/${primary.database} → ${fallback.user}@${fallback.host}:${fallback.port}/${fallback.database} (Docker)`
+  const databaseRoute = `${databaseConfig.user}@${databaseConfig.host}:${databaseConfig.port}/${databaseConfig.database}`
   console.log(['', 'NutriLife API siap', `🖥️  server    ${serverUrl}`, `🗄️  database  ${databaseRoute} (${databaseStatus})`, `🔐  auth      JWT 7 hari`, `🩺  health    ${serverUrl}/health`, `📦  uploads   ${uploadsStatus}`, ''].join('\n'))
   if (!process.env.JWT_SECRET) console.warn('⚠️  auth      JWT_SECRET belum diatur; memakai secret development')
   if (databaseError) console.warn(`⚠️  database  ${databaseError}`)

@@ -6,10 +6,6 @@ services:
       MYSQL_DATABASE: nutrilife
       MYSQL_USER: nutrilife
       MYSQL_PASSWORD: nutrilife
-    ports:
-      # Use a dedicated host port so a local MySQL installation on 3306
-      # cannot receive NutriLife's credentials by mistake.
-      - '3307:3306'
     volumes:
       - nutrilife_mysql:/var/lib/mysql
       - ./database/schema/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro

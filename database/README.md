@@ -17,7 +17,7 @@ npm run dev:all
 Perintah `db:setup-local` menyiapkan MySQL lokal di `127.0.0.1:3306` sebagai
 koneksi utama aplikasi. Perintah ini meminta password admin MySQL lokal, biasanya
 akun `root`, lalu membuat database `nutrilife`, user `nutrilife`, dan tabel awal.
-Untuk mengecek koneksi primary dan fallback dari konfigurasi `.env`, jalankan
+Untuk mengecek koneksi MySQL lokal dari konfigurasi `.env`, jalankan
 `npm run db:check`.
 
 Jika ingin memakai Docker sebagai cadangan:
@@ -70,12 +70,7 @@ UPDATE `User` SET `role` = 'ADMIN' WHERE `email` = 'admin@nutrilife.com';
 Login ulang setelah promosi agar aplikasi menerima sesi dengan role terbaru.
 
 API berjalan di `http://localhost:4004`, sedangkan frontend berjalan di `http://localhost:3000`. Konfigurasi dapat disalin dari `.env.example` ke `.env`.
-Backend mencoba MySQL utama dari `DB_HOST`/`DB_PORT` terlebih dahulu (bawaan:
-`127.0.0.1:3306`). Jika koneksi utama gagal, backend otomatis memakai MySQL Docker
-dari `DB_FALLBACK_HOST`/`DB_FALLBACK_PORT` (bawaan: `localhost:3307`). Node utama
-akan dicoba kembali secara berkala. Kredensial fallback dapat diatur tersendiri;
-jika tidak diisi, backend memakai kredensial database utama.
-
-Konfigurasi bawaan menggunakan akun MySQL `nutrilife` dengan password `nutrilife`,
-sesuai dengan `docker-compose.yml`. MySQL container diekspos pada port host `3307`
-agar tidak bertabrakan dengan instalasi MySQL lokal yang biasanya memakai port `3306`.
+Backend terhubung langsung ke MySQL lokal yang dikelola melalui phpMyAdmin di
+`DB_HOST`/`DB_PORT` (bawaan: `127.0.0.1:3306`). Gunakan `DB_USER` dan
+`DB_PASSWORD` sesuai akun MySQL lokal Anda; `.env.example` berisi kredensial
+contoh yang mungkin perlu disesuaikan.

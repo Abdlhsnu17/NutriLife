@@ -42,11 +42,10 @@ flowchart LR
     U[Browser] -->|HTTP :3000| F[Next.js]
     F -->|REST /api/v1| A[Express API :4004]
     A --> D[(MySQL lokal :3306)]
-    A -. fallback .-> X[(MySQL Docker :3307)]
     A --> P[storage/uploads/]
 ```
 
-Frontend dan backend dijalankan sebagai proses terpisah. Backend mencoba database utama terlebih dahulu, kemudian berpindah ke database Docker fallback ketika koneksi utama tidak tersedia.
+Frontend dan backend dijalankan sebagai proses terpisah. Backend terhubung langsung ke MySQL lokal yang dikelola melalui phpMyAdmin pada `127.0.0.1:3306`.
 
 ## Prasyarat
 
@@ -65,23 +64,13 @@ Frontend dan backend dijalankan sebagai proses terpisah. Backend mencoba databas
    cp .env.example .env
    ```
 
-2. Siapkan database dengan salah satu cara berikut.
-
-   **Opsi A — MySQL lokal (utama)**
+2. Siapkan database MySQL lokal melalui phpMyAdmin.
 
    ```bash
    npm run db:setup-local
    ```
 
    Perintah ini meminta password Admin MySQL, lalu membuat database, user aplikasi, tabel, dan data awal pada `127.0.0.1:3306`.
-
-   **Opsi B — MySQL melalui Docker**
-
-   ```bash
-   npm run db:up
-   ```
-
-   Container tersedia pada `localhost:3307`. Agar Docker menjadi koneksi utama, ubah nilai `DB_PORT` menjadi `3307` di `.env`, atau biarkan konfigurasi bawaan menggunakannya sebagai fallback.
 
 3. Pastikan database dapat diakses.
 
@@ -110,7 +99,6 @@ Gunakan `.env.example` sebagai sumber konfigurasi. Jangan commit file `.env` ata
 | --- | --- | --- |
 | `DB_HOST`, `DB_PORT` | Host dan port MySQL utama | `127.0.0.1`, `3306` |
 | `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Kredensial database utama | `nutrilife` |
-| `DB_FALLBACK_*` | Koneksi MySQL cadangan | `localhost:3307` |
 | `DATABASE_URL` | URL koneksi untuk integrasi tambahan | URL MySQL lokal |
 | `PORT` | Port backend | `4004` |
 | `SERVER_URL` | Base URL backend dan URL file upload | `http://localhost:4004` |
@@ -171,7 +159,7 @@ Importer resep melakukan upsert berdasarkan URL sumber. Importer nutrisi melakuk
 | `npm run dev:all` | Menjalankan frontend dan backend bersamaan |
 | `npm run db:up` | Menjalankan MySQL Docker |
 | `npm run db:setup-local` | Menyiapkan database MySQL lokal |
-| `npm run db:check` | Memeriksa koneksi database utama dan fallback |
+| `npm run db:check` | Memeriksa koneksi MySQL lokal |
 | `npm run db:migrate` | Menjalankan migrasi pada MySQL Docker |
 | `npm run db:import-recipes` | Mengimpor dataset resep |
 | `npm run db:import-fastfood` | Mengimpor dataset nutrisi |

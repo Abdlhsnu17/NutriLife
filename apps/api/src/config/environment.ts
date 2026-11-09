@@ -14,18 +14,9 @@ export const uploadPublicPath = '/uploads'
 export const uploadDir = resolve(projectRoot, process.env.UPLOAD_DIR ?? 'storage/uploads')
 
 export const databaseConfig = {
-  primary: {
-    host: process.env.DB_HOST ?? 'localhost',
-    port: Number(process.env.DB_PORT ?? 3306),
-    user: process.env.DB_USER ?? 'nutrilife',
-    password: process.env.DB_PASSWORD ?? 'nutrilife',
-    database: process.env.DB_NAME ?? 'nutrilife',
-  },
-  fallback: {
-    host: process.env.DB_FALLBACK_HOST ?? 'localhost',
-    port: Number(process.env.DB_FALLBACK_PORT ?? 3307),
-    user: process.env.DB_FALLBACK_USER ?? process.env.DB_USER ?? 'nutrilife',
-    password: process.env.DB_FALLBACK_PASSWORD ?? process.env.DB_PASSWORD ?? 'nutrilife',
-    database: process.env.DB_FALLBACK_NAME ?? process.env.DB_NAME ?? 'nutrilife',
-  },
+  host: process.env.DB_HOST ?? '127.0.0.1',
+  port: Number(process.env.DB_PORT ?? 3306),
+  user: process.env.DB_USER ?? 'nutrilife',
+  password: process.env.DB_PASSWORD ?? 'nutrilife',
+  database: process.env.DB_NAME ?? 'nutrilife',
 } as const

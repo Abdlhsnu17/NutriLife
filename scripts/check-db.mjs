@@ -15,18 +15,10 @@ async function check(label, config) {
   }
 }
 
-await check('primary', {
+await check('MySQL phpMyAdmin/local', {
   host: process.env.DB_HOST ?? '127.0.0.1',
   port: Number(process.env.DB_PORT ?? 3306),
   user: process.env.DB_USER ?? 'nutrilife',
   password: process.env.DB_PASSWORD ?? 'nutrilife',
   database: process.env.DB_NAME ?? 'nutrilife',
-})
-
-await check('docker fallback', {
-  host: process.env.DB_FALLBACK_HOST ?? '127.0.0.1',
-  port: Number(process.env.DB_FALLBACK_PORT ?? 3307),
-  user: process.env.DB_FALLBACK_USER ?? process.env.DB_USER ?? 'nutrilife',
-  password: process.env.DB_FALLBACK_PASSWORD ?? process.env.DB_PASSWORD ?? 'nutrilife',
-  database: process.env.DB_FALLBACK_NAME ?? process.env.DB_NAME ?? 'nutrilife',
 })
