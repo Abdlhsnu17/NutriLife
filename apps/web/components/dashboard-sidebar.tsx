@@ -24,6 +24,8 @@ type DashboardSidebarProps = {
   active?: string
   activeAdmin?: AdminSection
   mobileOpen: boolean
+  collapsed?: boolean
+  onToggleCollapse?: () => void
   onClose: () => void
   onNavigate?: (label: string) => void
   onLogout?: () => void
@@ -33,7 +35,7 @@ function dashboardHref(label: string) {
   return label === 'Dashboard' ? '/' : `/?section=${encodeURIComponent(label)}`
 }
 
-export function DashboardSidebar({ user, active, activeAdmin, mobileOpen, onClose, onNavigate, onLogout }: DashboardSidebarProps) {
+export function DashboardSidebar({ user, active, activeAdmin, mobileOpen, collapsed = false, onToggleCollapse, onClose, onNavigate, onLogout }: DashboardSidebarProps) {
   const initials = user.name.split(' ').map(word => word[0]).slice(0, 2).join('').toUpperCase()
   const avatar = <div className="avatar">{user.avatarUrl ? <img src={user.avatarUrl} alt="" /> : initials}</div>
   const navigate = (label: string) => { onNavigate?.(label); onClose() }
@@ -44,14 +46,16 @@ export function DashboardSidebar({ user, active, activeAdmin, mobileOpen, onClos
   const renderDashboardItem = ({ label, icon: Icon }: (typeof mainItems)[number] | (typeof otherItems)[number]) => {
     const className = active === label ? 'nav-item active' : 'nav-item'
     return onNavigate
-      ? <button key={label} className={className} onClick={() => navigate(label)}><Icon size={18} />{label}</button>
-      : <Link key={label} href={dashboardHref(label)} className={className} onClick={onClose}><Icon size={18} />{label}</Link>
+      ? <button key={label} className={className} title={label} onClick={() => navigate(label)}><Icon size={18} />{label}</button>
+      : <Link key={label} href={dashboardHref(label)} className={className} title={label} onClick={onClose}><Icon size={18} />{label}</Link>
   }
+
+  const sidebarClassName = mobileOpen ? 'sidebar open' : collapsed ? 'sidebar collapsed' : 'sidebar'
 
   return <>
     {mobileOpen && <button className="sidebar-backdrop" aria-label="Tutup menu" onClick={onClose} />}
-    <aside className={mobileOpen ? 'sidebar open' : 'sidebar'}>
-      <div className="brand"><div className="brand-mark"><Apple size={19} /></div><span>Nutri<span>Life</span></span><button className="close-mobile" onClick={onClose} aria-label="Tutup menu"><X size={18} /></button></div>
+    <aside className={sidebarClassName}>
+      <div className="brand"><div className="brand-identity"><div className="brand-mark"><Apple size={19} /></div><span>Nutri<span>Life</span></span></div>{onToggleCollapse && <button className="sidebar-toggle" onClick={onToggleCollapse} aria-label={collapsed ? 'Buka sidebar' : 'Ciutkan sidebar'} aria-expanded={!collapsed} title={collapsed ? 'Buka sidebar' : 'Ciutkan sidebar'}><Menu size={18} /></button>}<button className="close-mobile" onClick={onClose} aria-label="Tutup menu"><X size={18} /></button></div>
       {onNavigate
         ? <button className="workspace" onClick={() => navigate('Pengaturan')}>{avatar}<div><strong>{user.name}</strong><small>Personal space</small></div><ChevronRight size={16} className="muted" /></button>
         : <Link href={dashboardHref('Pengaturan')} className="workspace sidebar-workspace-link" onClick={onClose}>{avatar}<div><strong>{user.name}</strong><small>Personal space</small></div><ChevronRight size={16} className="muted" /></Link>}
@@ -73,8 +77,9 @@ export function DashboardSidebar({ user, active, activeAdmin, mobileOpen, onClos
 
 export function AdminRouteShell({ user, active, children }: { user: SidebarUser; active: AdminSection; children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   return <div className="app-shell admin-app-shell">
-    <DashboardSidebar user={user} activeAdmin={active} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
+    <DashboardSidebar user={user} activeAdmin={active} mobileOpen={mobileOpen} collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(collapsed => !collapsed)} onClose={() => setMobileOpen(false)} />
     <div className="admin-route-content">
       <button className="admin-route-menu" onClick={() => setMobileOpen(true)} aria-label="Buka menu"><Menu size={21} /></button>
       {children}

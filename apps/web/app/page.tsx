@@ -78,6 +78,7 @@ function HomeContent() {
   const [active, setActive] = useState('Dashboard')
   const [dark, setDark] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [showMeal, setShowMeal] = useState(false)
   const [showActivity, setShowActivity] = useState(false)
   const [showWeight, setShowWeight] = useState(false)
@@ -317,7 +318,7 @@ function HomeContent() {
   const pageDescriptions: Record<string, string> = { Dashboard: 'Pantau kebiasaan sehatmu hari ini.', 'Catat Makanan': 'Lihat dan tambahkan asupan harianmu.', Aktivitas: 'Catat gerak tubuh dan perkembangan langkahmu.', 'Rencana Makan': 'Menu seimbang yang siap menemani harimu.', 'Target saya': 'Atur sasaran kesehatan sesuai kebutuhanmu.', Bantuan: 'Temukan jawaban atau hubungi tim NutriLife.', Pengaturan: 'Kelola profil dan preferensi aplikasi.' }
 
   return <main className={dark ? 'app-shell dark' : 'app-shell'}>
-    <DashboardSidebar user={dashboard.user} active={active} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} onNavigate={selectMenu} onLogout={logout} />
+    <DashboardSidebar user={dashboard.user} active={active} mobileOpen={mobileOpen} collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(collapsed => !collapsed)} onClose={() => setMobileOpen(false)} onNavigate={selectMenu} onLogout={logout} />
     <section className="content">
       <header className="topbar"><button className="menu-btn" onClick={() => setMobileOpen(true)} aria-label="Buka menu"><Menu size={21} /></button><div className="crumb"><span>{formatDate(dashboard.date)}</span><h1>{active === 'Dashboard' ? <>Selamat datang, {dashboard.user.name.split(' ')[0]} <span>👋</span></> : active}</h1></div><div className="top-actions"><button className="icon-btn" onClick={() => setSearchOpen(!searchOpen)} aria-label="Cari"><Search size={19} /></button><button className="icon-btn notification" onClick={() => setNotificationsOpen(!notificationsOpen)} aria-label="Notifikasi"><Bell size={19} /><i /></button><button className="theme-btn" onClick={() => setDark(!dark)} aria-label="Ganti tema">{dark ? <Sun size={17} /> : <Moon size={17} />}</button></div>{searchOpen && <div className="top-popover search-pop"><Search size={16} /><input autoFocus placeholder="Cari menu…" onChange={event => { const found = [...nav.map(item => item.label), 'Target saya', 'Bantuan', 'Pengaturan'].find(label => label.toLowerCase().includes(event.target.value.toLowerCase())); if (event.target.value && found) setActive(found) }} /></div>}{notificationsOpen && <div className="top-popover"><strong>Notifikasi</strong><p>Data kesehatanmu siap diperbarui hari ini.</p><button onClick={() => { setNotificationsOpen(false); notify('Notifikasi ditandai sudah dibaca') }}>Tandai sudah dibaca</button></div>}</header>
       <div className="page-body">
