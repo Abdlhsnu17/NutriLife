@@ -24,7 +24,7 @@ const fallbackArticles: PublicArticle[] = [
   { title: 'Pembaruan data nutrisi untuk makanan lokal', category: 'Makanan', excerpt: 'Dataset nutrisi diperbarui dengan lebih banyak produk lokal.', slug: 'pembaruan-data-nutrisi', isNews: true },
 ]
 
-export default function PublicHome({ onLogin }: { onLogin: () => void }) {
+export default function PublicHome() {
   const [articles, setArticles] = useState<PublicArticle[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -55,7 +55,7 @@ export default function PublicHome({ onLogin }: { onLogin: () => void }) {
           <a href="#artikel">Artikel</a>
           <a href="#berita">Berita</a>
         </nav>
-        <button className="public-login" onClick={onLogin}><LogIn size={16} /> Masuk <ChevronRight size={14} /></button>
+        <Link className="public-login" href="/login?redirect=%2F"><LogIn size={16} /> Masuk <ChevronRight size={14} /></Link>
       </header>
 
       <section className="public-hero-home">
@@ -64,7 +64,7 @@ export default function PublicHome({ onLogin }: { onLogin: () => void }) {
           <h1>Lebih paham tubuhmu.<br /><em>Lebih sehat</em> setiap hari.</h1>
           <p>Satu ruang sederhana untuk memahami nutrisi, membangun kebiasaan baik, dan melihat progres yang benar-benar berarti.</p>
           <div className="public-hero-actions">
-            <button onClick={onLogin}>Mulai perjalananmu <ArrowRight size={17} /></button>
+            <Link href="/login?redirect=%2F">Mulai perjalananmu <ArrowRight size={17} /></Link>
             <a href="#fitur"><span>Jelajahi fitur</span> <ChevronRight size={15} /></a>
           </div>
           <div className="public-hero-proof">
@@ -126,7 +126,7 @@ export default function PublicHome({ onLogin }: { onLogin: () => void }) {
         </div>
       </section>
 
-      <section className="public-cta"><div><span>MULAI DARI HARI INI</span><h2>Versi terbaikmu dimulai<br />dari satu kebiasaan kecil.</h2><p>Bangun pola hidup sehat yang realistis, personal, dan berkelanjutan bersama NutriLife.</p><div className="public-cta-checks"><span><Check size={14} /> Mudah digunakan</span><span><Check size={14} /> Progres personal</span></div></div><button onClick={onLogin}>Mulai sekarang <ArrowRight size={17} /></button></section>
+      <section className="public-cta"><div><span>MULAI DARI HARI INI</span><h2>Versi terbaikmu dimulai<br />dari satu kebiasaan kecil.</h2><p>Bangun pola hidup sehat yang realistis, personal, dan berkelanjutan bersama NutriLife.</p><div className="public-cta-checks"><span><Check size={14} /> Mudah digunakan</span><span><Check size={14} /> Progres personal</span></div></div><Link href="/login?redirect=%2F">Mulai sekarang <ArrowRight size={17} /></Link></section>
       <footer className="public-footer"><div><Link href="/" className="public-brand"><span><Apple size={18} /></span>Nutri<b>Life</b></Link><p>Teman bertumbuh untuk hidup yang lebih sehat, setiap hari.</p></div><nav aria-label="Navigasi footer"><a href="#fitur">Fitur</a><Link href="/articles">Artikel</Link><a href="#berita">Berita</a></nav><small>© {new Date().getFullYear()} NutriLife</small></footer>
     </main>
   )

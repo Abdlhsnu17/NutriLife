@@ -43,6 +43,14 @@ secara lokal, jalankan migrasi, lalu jalankan perintah impor di atas.
 
 `schema/schema.sql` otomatis dijalankan oleh Docker saat volume dibuat pertama kali. `migrations/migrate.sql` aman dijalankan untuk volume lama dan menambahkan tabel/enum yang belum ada. Akun awal untuk dashboard adalah `demo-user`.
 
+Tabel `Recipe` dipakai oleh pencarian di menu **Rencana Makan**. Schema baru dan
+migrasi database lama menyertakan lima resep dummy untuk pengembangan lokal.
+Seed memakai `INSERT IGNORE` dan URL sumber tetap, jadi aman dijalankan ulang.
+Admin juga dapat menambah, mengubah, dan menghapus resep di `/admin/recipes`;
+resep yang dibuat dari halaman ini langsung tersedia pada pencarian resep. Bahan
+dan langkah ditulis satu item per baris. Jika tidak ada URL sumber, aplikasi akan
+membuat URL lokal untuk resep tersebut.
+
 Alur lupa password terdiri dari dua tahap: masukkan email untuk membuat token reset
 yang berlaku 15 menit, lalu masukkan password baru pada form berikutnya. Saat mode
 development, aplikasi langsung membuka form password baru. Pada production, token

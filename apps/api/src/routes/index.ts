@@ -213,7 +213,7 @@ app.put('/api/v1/admin/staff/:staffId', async (req: AuthRequest, res, next) => {
       if (counts[0].total <= 1) return res.status(400).json({ error: 'LAST_ADMIN', message: 'Minimal satu akun Admin harus tetap tersedia.' })
     }
     const fields: string[] = []
-    const values: unknown[] = []
+    const values: any[] = []
     if (parsed.data.name !== undefined) { fields.push('name = ?'); values.push(parsed.data.name) }
     if (parsed.data.email !== undefined) { fields.push('email = ?'); values.push(parsed.data.email) }
     if (parsed.data.role !== undefined) { fields.push('role = ?'); values.push(parsed.data.role) }
@@ -404,6 +404,76 @@ app.get('/api/v1/recipes', async (req, res, next) => {
   } catch (error) { return next(error) }
 })
 
+const recipeAdminSchema = z.object({
+  title: z.string().trim().min(2).max(255), category: z.string().trim().min(1).max(100),
+  ingredients: z.array(z.string().trim().min(1)).min(1).max(100),
+  steps: z.array(z.string().trim().min(1)).min(1).max(100),
+  sourceUrl: z.string().trim().url().max(768).optional(),
+})
+
+app.get('/api/v1/admin/recipes', async (req: AuthRequest, res, next) => {
+  if (req.auth!.role !== 'ADMIN') return res.status(403).json({ error: 'FORBIDDEN', message: 'Hanya Admin yang dapat mengelola resep.' })
+  try {
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : ''
+    const search = `%${q}%`
+    const [recipes] = await db.execute<RowDataPacket[]>(
+      `SELECT id, title, category, ingredients, steps, loves, sourceUrl, totalIngredients, totalSteps, createdAt
+       FROM Recipe WHERE ? = '' OR title LIKE ? OR category LIKE ? ORDER BY title ASC LIMIT 300`, [q, search, search],
+    )
+    return res.json({ recipes })
+  } catch (error) { return next(error) }
+})
+
+app.post('/api/v1/admin/recipes', async (req: AuthRequest, res, next) => {
+  if (req.auth!.role !== 'ADMIN') return res.status(403).json({ error: 'FORBIDDEN', message: 'Hanya Admin yang dapat mengelola resep.' })
+  const parsed = recipeAdminSchema.safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Lengkapi judul, kategori, bahan, dan langkah resep.', details: parsed.error.flatten() })
+  try {
+    const recipe = parsed.data
+    const sourceUrl = recipe.sourceUrl || `https://nutrilife.local/recipes/${randomUUID()}`
+    const id = createHash('sha256').update(sourceUrl).digest('hex')
+    const titleCleaned = recipe.title.toLowerCase().normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
+    const ingredients = recipe.ingredients.join('\n')
+    const steps = recipe.steps.join('\n')
+    await db.execute<ResultSetHeader>(
+      `INSERT INTO Recipe (id, title, ingredients, steps, sourceUrl, category, titleCleaned, totalIngredients, ingredientsCleaned, totalSteps)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, recipe.title, ingredients, steps, sourceUrl, recipe.category, titleCleaned, recipe.ingredients.length, recipe.ingredients.map(value => value.toLowerCase()).join('\n'), recipe.steps.length],
+    )
+    return res.status(201).json({ recipe: { id, title: recipe.title, category: recipe.category, ingredients, steps, sourceUrl, totalIngredients: recipe.ingredients.length, totalSteps: recipe.steps.length } })
+  } catch (error) {
+    if ((error as { code?: string }).code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'RECIPE_EXISTS', message: 'URL sumber resep tersebut sudah digunakan.' })
+    return next(error)
+  }
+})
+
+app.put('/api/v1/admin/recipes/:recipeId', async (req: AuthRequest, res, next) => {
+  if (req.auth!.role !== 'ADMIN') return res.status(403).json({ error: 'FORBIDDEN', message: 'Hanya Admin yang dapat mengelola resep.' })
+  const parsed = recipeAdminSchema.safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Lengkapi judul, kategori, bahan, dan langkah resep.', details: parsed.error.flatten() })
+  try {
+    const recipe = parsed.data
+    const titleCleaned = recipe.title.toLowerCase().normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
+    const ingredients = recipe.ingredients.join('\n')
+    const steps = recipe.steps.join('\n')
+    const [result] = await db.execute<ResultSetHeader>(
+      `UPDATE Recipe SET title = ?, category = ?, titleCleaned = ?, ingredients = ?, steps = ?, totalIngredients = ?, ingredientsCleaned = ?, totalSteps = ? WHERE id = ?`,
+      [recipe.title, recipe.category, titleCleaned, ingredients, steps, recipe.ingredients.length, recipe.ingredients.map(value => value.toLowerCase()).join('\n'), recipe.steps.length, req.params.recipeId],
+    )
+    if (!result.affectedRows) return res.status(404).json({ error: 'RECIPE_NOT_FOUND', message: 'Resep tidak ditemukan.' })
+    return res.json({ message: 'Resep berhasil diperbarui.' })
+  } catch (error) { return next(error) }
+})
+
+app.delete('/api/v1/admin/recipes/:recipeId', async (req: AuthRequest, res, next) => {
+  if (req.auth!.role !== 'ADMIN') return res.status(403).json({ error: 'FORBIDDEN', message: 'Hanya Admin yang dapat mengelola resep.' })
+  try {
+    const [result] = await db.execute<ResultSetHeader>('DELETE FROM Recipe WHERE id = ?', [req.params.recipeId])
+    if (!result.affectedRows) return res.status(404).json({ error: 'RECIPE_NOT_FOUND', message: 'Resep tidak ditemukan.' })
+    return res.status(204).send()
+  } catch (error) { return next(error) }
+})
+
 app.get('/api/v1/nutrition-items', async (req, res, next) => {
   const parsed = nutritionItemQuerySchema.safeParse(req.query)
   if (!parsed.success) return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Masukkan minimal 2 karakter untuk mencari makanan atau minuman.' })
@@ -419,6 +489,73 @@ app.get('/api/v1/nutrition-items', async (req, res, next) => {
       [search, search, search, prefix, prefix, parsed.data.limit],
     )
     return res.json({ items })
+  } catch (error) { return next(error) }
+})
+
+const nutritionItemAdminSchema = z.object({
+  name: z.string().trim().min(2).max(255), brand: z.string().trim().min(1).max(191),
+  kind: z.enum(['FOOD', 'DRINK']), calories: z.number().int().nonnegative().max(10000),
+  protein: z.number().nonnegative().max(1000).default(0), carbs: z.number().nonnegative().max(1000).default(0),
+  fat: z.number().nonnegative().max(1000).default(0), fiber: z.number().nonnegative().max(1000).default(0),
+  sugar: z.number().nonnegative().max(1000).default(0), sodium: z.number().nonnegative().max(100000).default(0),
+})
+
+app.get('/api/v1/admin/nutrition-items', async (req: AuthRequest, res, next) => {
+  if (req.auth!.role !== 'ADMIN') return res.status(403).json({ error: 'FORBIDDEN', message: 'Hanya Admin yang dapat mengelola katalog.' })
+  try {
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : ''
+    const search = `%${q}%`
+    const [items] = await db.execute<NutritionItemRow[]>(
+      `SELECT id, name, brand, kind, calories, protein, carbs, fat, fiber, sugar, sodium FROM NutritionItem
+       WHERE ? = '' OR name LIKE ? OR brand LIKE ? ORDER BY name ASC LIMIT 300`, [q, search, search],
+    )
+    return res.json({ items })
+  } catch (error) { return next(error) }
+})
+
+app.post('/api/v1/admin/nutrition-items', async (req: AuthRequest, res, next) => {
+  if (req.auth!.role !== 'ADMIN') return res.status(403).json({ error: 'FORBIDDEN', message: 'Hanya Admin yang dapat mengelola katalog.' })
+  const parsed = nutritionItemAdminSchema.safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Periksa nama, merek, dan nilai nutrisi.', details: parsed.error.flatten() })
+  try {
+    const item = parsed.data
+    const normalize = (value: string) => value.toLowerCase().normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
+    const id = createHash('sha256').update(`${normalize(item.brand)}|${normalize(item.name)}`).digest('hex')
+    const nameNormalized = normalize(item.name)
+    await db.execute<ResultSetHeader>(
+      `INSERT INTO NutritionItem (id, name, nameNormalized, brand, kind, calories, protein, carbs, fat, fiber, sugar, sodium, source)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'admin')`,
+      [id, item.name, nameNormalized, item.brand, item.kind, item.calories, item.protein, item.carbs, item.fat, item.fiber, item.sugar, item.sodium],
+    )
+    return res.status(201).json({ item: { id, ...item } })
+  } catch (error) {
+    if ((error as { code?: string }).code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'ITEM_EXISTS', message: 'Item dengan merek dan nama tersebut sudah ada.' })
+    return next(error)
+  }
+})
+
+app.put('/api/v1/admin/nutrition-items/:itemId', async (req: AuthRequest, res, next) => {
+  if (req.auth!.role !== 'ADMIN') return res.status(403).json({ error: 'FORBIDDEN', message: 'Hanya Admin yang dapat mengelola katalog.' })
+  const parsed = nutritionItemAdminSchema.safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Periksa nama, merek, dan nilai nutrisi.', details: parsed.error.flatten() })
+  try {
+    const item = parsed.data
+    const nameNormalized = item.name.toLowerCase().normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
+    const [result] = await db.execute<ResultSetHeader>(
+      `UPDATE NutritionItem SET name = ?, nameNormalized = ?, brand = ?, kind = ?, calories = ?, protein = ?, carbs = ?, fat = ?, fiber = ?, sugar = ?, sodium = ?, source = 'admin' WHERE id = ?`,
+      [item.name, nameNormalized, item.brand, item.kind, item.calories, item.protein, item.carbs, item.fat, item.fiber, item.sugar, item.sodium, req.params.itemId],
+    )
+    if (!result.affectedRows) return res.status(404).json({ error: 'ITEM_NOT_FOUND', message: 'Item katalog tidak ditemukan.' })
+    return res.json({ item: { id: req.params.itemId, ...item } })
+  } catch (error) { return next(error) }
+})
+
+app.delete('/api/v1/admin/nutrition-items/:itemId', async (req: AuthRequest, res, next) => {
+  if (req.auth!.role !== 'ADMIN') return res.status(403).json({ error: 'FORBIDDEN', message: 'Hanya Admin yang dapat mengelola katalog.' })
+  try {
+    const [result] = await db.execute<ResultSetHeader>('DELETE FROM NutritionItem WHERE id = ?', [req.params.itemId])
+    if (!result.affectedRows) return res.status(404).json({ error: 'ITEM_NOT_FOUND', message: 'Item katalog tidak ditemukan.' })
+    return res.status(204).send()
   } catch (error) { return next(error) }
 })
 
