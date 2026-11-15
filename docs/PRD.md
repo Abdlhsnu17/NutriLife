@@ -3,8 +3,8 @@
 | Atribut | Nilai |
 | --- | --- |
 | Produk | NutriLife |
-| Versi dokumen | 1.0 |
-| Tanggal | 22 Agustus 2026 |
+| Versi dokumen | 1.1 |
+| Tanggal | 16 November 2026 |
 | Status | Draft berbasis implementasi saat ini |
 | Platform | Web responsif |
 | Bahasa utama | Bahasa Indonesia |
@@ -36,7 +36,7 @@ Menjadi pendamping kesehatan harian yang mudah digunakan oleh pengguna Indonesia
 
 1. Memungkinkan pengguna menyelesaikan pencatatan kesehatan harian dari satu aplikasi.
 2. Menampilkan progres terhadap target secara ringkas dan mudah dipahami.
-3. Mengurangi input manual melalui pencarian resep dan data nutrisi.
+3. Mengurangi input manual melalui katalog gizi makanan dan minuman.
 4. Menyediakan sistem konten berbasis role untuk edukasi dan komunikasi.
 5. Menjaga data setiap pengguna terisolasi melalui autentikasi dan pemeriksaan kepemilikan.
 
@@ -47,7 +47,7 @@ Menjadi pendamping kesehatan harian yang mudah digunakan oleh pengguna Indonesia
 - Perhitungan target otomatis berdasarkan kondisi medis.
 - Aplikasi mobile native dan penggunaan offline.
 - Pembayaran, langganan, konsultasi video, atau marketplace.
-- Rencana makan personal berbasis AI; rencana makan saat ini berupa rekomendasi statis.
+- Rekomendasi rencana makan pada navigasi pengguna; resep tetap dapat dikelola dan dicari sebagai pilihan tambahan.
 
 ## 5. Persona
 
@@ -67,7 +67,7 @@ Pengelola sistem yang memiliki seluruh kapabilitas Nutritionist serta bertanggun
 
 - Semua indikator harian utama tampil dalam satu dashboard.
 - Form pencatatan menggunakan istilah dan format yang familiar bagi pengguna Indonesia.
-- Data makanan dapat diisi dari katalog resep atau nutrisi yang dapat diimpor.
+- Data asupan dapat diisi dari katalog nutrisi; pilihan resep tersedia sebagai pelengkap.
 - Target bersifat fleksibel dan tersimpan per pengguna.
 - Konten edukasi dan pengumuman dapat dikelola tanpa perubahan kode.
 
@@ -79,12 +79,13 @@ Pengelola sistem yang memiliki seluruh kapabilitas Nutritionist serta bertanggun
 | Autentikasi | Registrasi, login, sesi 7 hari, logout | Tersedia |
 | Pemulihan akun | Pembuatan dan penggunaan token reset | Parsial; email production belum tersedia |
 | Dashboard | Ringkasan nutrisi, air, langkah, berat, target, aktivitas mingguan | Tersedia |
-| Makanan | Tambah, ubah, hapus, dan pencarian autocomplete | Tersedia |
+| Asupan harian | Tambah, ubah, hapus, waktu makan, pilihan katalog otomatis, dan input manual sebagai fallback | Tersedia |
 | Hidrasi | Tambah konsumsi air 250 ml | Tersedia |
 | Aktivitas | Catat jenis, langkah, durasi, dan kalori | Tersedia |
 | Berat badan | Catat berat dan lihat perubahan terakhir | Tersedia |
 | Target | Atur tujuh target kesehatan | Tersedia |
-| Rencana makan | Rekomendasi menu harian | Tersedia sebagai data statis |
+| Rencana makan | Rekomendasi menu harian | Tidak tersedia pada navigasi pengguna |
+| Katalog gizi Admin | Tab tambah item dan daftar item; pencarian, edit, hapus, pagination 10 item | Tersedia |
 | Profil | Ubah identitas, foto, dan password | Tersedia |
 | Konten | Artikel, berita, pengumuman, dan upload gambar | Tersedia |
 | Staf | CRUD Admin dan Nutritionist | Tersedia untuk Admin |
@@ -99,8 +100,9 @@ Pengelola sistem yang memiliki seluruh kapabilitas Nutritionist serta bertanggun
 2. Pengguna mendaftar dengan nama, email, dan password.
 3. Sistem membuat akun `USER` beserta target default.
 4. Pengguna masuk ke dashboard.
-5. Pengguna mencari atau mengetik makanan, memeriksa nilai nutrisinya, lalu menyimpan.
-6. Dashboard memperbarui konsumsi dan progres target hari itu.
+5. Pengguna membuka **Asupan Harian**, memilih waktu makan, lalu mencari dan memilih makanan/minuman dari katalog.
+6. Sistem menampilkan ringkasan nutrisi dari katalog. Jika item tidak ditemukan, pengguna dapat memilih input manual dan mengisi nilai gizi.
+7. Dashboard memperbarui konsumsi dan progres target hari itu.
 
 ### Pemantauan harian
 
@@ -158,14 +160,16 @@ Pengelola sistem yang memiliki seluruh kapabilitas Nutritionist serta bertanggun
 - Dashboard akun A tidak dapat diminta menggunakan identitas akun B.
 - Kondisi kosong ditampilkan sebagai nilai nol, bukan error.
 
-### FR-03 — Catatan makanan
+### FR-03 — Asupan harian
 
 - Pengguna dapat membuat, mengubah, dan menghapus catatan makanan miliknya.
 - Data minimum adalah jenis waktu makan, nama, dan kalori.
 - Protein, karbohidrat, dan lemak dapat bernilai nol.
-- Pengguna dapat mencari katalog dengan minimal dua karakter.
-- Pemilihan hasil nutrisi mengisi data kalori dan makronutrien.
-- Pemilihan resep menampilkan bahan dan langkah yang tersedia.
+- Navigasi **Asupan Harian** membuka daftar asupan; tombol tambah membuka form pencatatan.
+- Pengguna dapat memilih waktu makan dan mencari katalog makanan/minuman dengan minimal dua karakter.
+- Pemilihan item katalog mengisi nutrisi dari database tanpa meminta pengguna mengisi ulang nilai kalori dan makro.
+- Jika item tidak ditemukan, pengguna dapat memilih input manual untuk mengisi nama, kalori, dan makro.
+- Resep dapat muncul sebagai pilihan tambahan; data nutrisi resep mungkin tidak tersedia dan perlu diisi manual.
 
 **Acceptance criteria**
 
@@ -237,7 +241,7 @@ Pengelola sistem yang memiliki seluruh kapabilitas Nutritionist serta bertanggun
 | `ActivityLog` | Aktivitas, durasi, langkah, dan kalori |
 | `WeightLog` | Riwayat berat badan |
 | `HealthGoal` | Target per indikator dan pengguna |
-| `Recipe` | Katalog resep hasil impor |
+| `Recipe` | Katalog resep hasil impor dan pilihan tambahan saat pencatatan |
 | `NutritionItem` | Katalog nutrisi makanan/minuman |
 | `Article` | Artikel dan berita publik |
 | `Notification` | Pengumuman dari staf |
@@ -298,7 +302,6 @@ Tidak ada event analytics khusus produk pada implementasi saat ini; event, conse
 | Risiko | Dampak | Mitigasi |
 | --- | --- | --- |
 | Data katalog tidak konsisten | Perhitungan nutrisi menyesatkan | Cantumkan sumber, porsi, tanggal pembaruan, dan proses review |
-| Rencana makan statis dianggap personal | Ekspektasi pengguna keliru | Beri label rekomendasi umum dan disclaimer |
 | Upload tersimpan di disk lokal | File hilang pada deployment stateless | Pindah ke object storage sebelum scale-out |
 | Reset email belum terhubung | Pemulihan akun production tidak selesai | Integrasikan provider email dan rate limiting |
 | Token disimpan di local storage | Dampak XSS lebih besar | Perketat CSP; evaluasi cookie HttpOnly/SameSite |

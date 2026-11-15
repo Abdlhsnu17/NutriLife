@@ -10,12 +10,12 @@ NutriLife adalah aplikasi web pencatatan kesehatan personal berbahasa Indonesia.
 
 - Registrasi, login, logout, dan reset password.
 - Dashboard ringkasan kalori, makronutrien, air, langkah, dan berat badan.
-- Tambah, ubah, dan hapus catatan makanan harian.
-- Pencarian resep dan data nutrisi untuk mengisi detail makanan secara otomatis.
+- Tambah, ubah, dan hapus asupan harian dengan pilihan waktu makan.
+- Pencarian katalog makanan/minuman yang mengisi data nutrisi otomatis; input manual tersedia bila item tidak ditemukan.
 - Pencatatan air minum, aktivitas, langkah, durasi, kalori terbakar, dan berat badan.
 - Pengaturan target kalori, air, langkah, berat, protein, karbohidrat, dan lemak.
 - Pengelolaan profil, foto profil, dan password.
-- Rencana makan harian, tema gelap, halaman bantuan, serta artikel dan berita kesehatan.
+- Tema gelap, halaman bantuan, serta artikel dan berita kesehatan.
 
 ### Nutritionist dan Admin
 
@@ -123,6 +123,10 @@ UPDATE `User` SET `role` = 'ADMIN' WHERE `email` = 'admin@nutrilife.com';
 Login ulang setelah perubahan role.
 
 ## Dataset resep dan nutrisi
+
+Resep dan item nutrisi disimpan di database NutriLife. Resep dapat dicari sebagai pilihan tambahan saat mencatat asupan. Menu rekomendasi **Rencana Makan** belum menjadi bagian dari navigasi pengguna. Admin mengelola katalog gizi melalui tab **Tambah item** dan **Daftar item** pada halaman katalog.
+
+Seed contoh berisi 100 item makanan dan minuman tersedia di [database/seeds/nutrition_catalog_dummy.sql](database/seeds/nutrition_catalog_dummy.sql). Pilih database `nutrilife` di phpMyAdmin lalu impor file tersebut untuk menambah data contoh.
 
 Impor resep Indonesia:
 
