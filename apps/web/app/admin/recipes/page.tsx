@@ -91,7 +91,7 @@ export default function RecipeManagementPage() {
   if (user.role !== 'ADMIN') return <main className="article-page-shell"><div className="article-page-container"><Link href="/" className="article-back"><ArrowLeft size={17} /> Kembali ke dashboard</Link><div className="admin-access-card"><h1>Akses ditolak</h1><p>Hanya Admin yang dapat mengelola resep.</p></div></div></main>
 
   return <AdminRouteShell user={user} active="recipes"><main className="article-page-shell"><div className="article-page-container admin-article-page">
-    <div className="article-toolbar"><div className="staff-toolbar-actions"><Link href="/admin/catalog" className="secondary-btn">Katalog makanan</Link><span className="admin-role-badge">ADMIN</span></div></div>
+    <div className="article-toolbar"><div className="staff-toolbar-actions"><Link href="/admin/catalog" className="secondary-btn">Katalog gizi</Link><span className="admin-role-badge">ADMIN</span></div></div>
     <header className="article-hero admin-hero"><span className="article-kicker">RECIPE MANAGEMENT</span><h1>Kelola Resep Makanan</h1><p>Tambahkan resep beserta bahan dan langkah memasaknya. Resep akan tersedia di pencarian Rencana Makan.</p></header>
     {error && <div className="panel error">{error}</div>}{message && <div className="panel success"><ShieldCheck size={17} /> {message}</div>}
     <section className="panel admin-panel"><div className="admin-panel-heading"><span><Plus size={18} /></span><div><h2>{editing ? 'Ubah resep' : 'Tambah resep'}</h2><p>Setiap bahan dan langkah ditulis pada baris terpisah.</p></div></div>

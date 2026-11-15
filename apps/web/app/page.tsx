@@ -22,7 +22,6 @@ type RecipeSuggestion = {
   id: string; title: string; category: string; ingredients: string; steps: string
   totalIngredients: number; totalSteps: number
 }
-type PlanRecipe = RecipeSuggestion & { calories?: number; protein?: number; carbs?: number; fat?: number }
 type SelectedMealDetail =
   | { kind: 'nutrition'; item: NutritionSuggestion }
   | { kind: 'recipe'; recipe: RecipeSuggestion }
@@ -41,11 +40,11 @@ const emptyDashboard = (user: AuthUser = { id: '', name: 'Pengguna', email: '', 
   weight: { current: 0, change: 0, target: 65 }, macroTargets: { protein: 120, carbs: 220, fat: 60 }, meals: [], weeklyActivity: [],
 })
 const nav = [
-  { label: 'Dashboard', icon: LayoutDashboard }, { label: 'Catat Makanan', icon: Utensils },
-  { label: 'Aktivitas', icon: Activity }, { label: 'Rencana Makan', icon: Apple },
+  { label: 'Dashboard', icon: LayoutDashboard }, { label: 'Asupan Harian', icon: Utensils },
+  { label: 'Aktivitas', icon: Activity },
 ]
 const faq = [
-  ['Bagaimana cara mencatat makanan?', 'Pilih Catat Makanan, isi nilai nutrisi, lalu tekan Simpan makanan.'],
+  ['Bagaimana cara mencatat makanan?', 'Pilih Asupan Harian, pilih item dari katalog, lalu tekan Simpan makanan.'],
   ['Apakah target bisa diubah?', 'Bisa. Buka Target saya, ubah nilai yang diinginkan, kemudian simpan.'],
   ['Mengapa data belum muncul?', 'Pastikan MySQL dan backend aktif, lalu tekan tombol Coba lagi pada notifikasi.'],
 ]
@@ -95,12 +94,9 @@ function HomeContent() {
   const [editingMealId, setEditingMealId] = useState('')
   const [nutritionSuggestions, setNutritionSuggestions] = useState<NutritionSuggestion[]>([])
   const [recipeSuggestions, setRecipeSuggestions] = useState<RecipeSuggestion[]>([])
-  const [planRecipes, setPlanRecipes] = useState<PlanRecipe[]>([])
-  const [planQuery, setPlanQuery] = useState('')
-  const [planLoading, setPlanLoading] = useState(false)
-  const [planError, setPlanError] = useState('')
   const [selectedSuggestionName, setSelectedSuggestionName] = useState('')
   const [selectedMealDetail, setSelectedMealDetail] = useState<SelectedMealDetail | null>(null)
+  const [manualMealEntry, setManualMealEntry] = useState(false)
   const [activityForm, setActivityForm] = useState({ activityType: 'Berjalan', steps: '', duration: '', calories: '' })
   const [weightValue, setWeightValue] = useState('')
   const [goals, setGoals] = useState({ CALORIES: '1800', WATER: '2500', STEPS: '8000', WEIGHT: '65', PROTEIN: '120', CARBS: '220', FAT: '60' })
@@ -141,7 +137,7 @@ function HomeContent() {
   useEffect(() => {
     if (window.location.pathname === '/login') setShowAuth(true)
     const requestedSection = new URLSearchParams(window.location.search).get('section')
-    const sections = ['Dashboard', 'Catat Makanan', 'Aktivitas', 'Rencana Makan', 'Target saya', 'Bantuan', 'Pengaturan']
+    const sections = ['Dashboard', 'Asupan Harian', 'Aktivitas', 'Target saya', 'Bantuan', 'Pengaturan']
     if (requestedSection && sections.includes(requestedSection)) setActive(requestedSection)
   }, [])
   useEffect(() => {
@@ -165,26 +161,10 @@ function HomeContent() {
     }, 250)
     return () => { window.clearTimeout(timeout); controller.abort() }
   }, [mealForm.name, selectedSuggestionName, showMeal, token])
-  useEffect(() => {
-    if (active !== 'Rencana Makan' || !token) return
-    const query = planQuery.trim() || 'ayam'
-    const controller = new AbortController()
-    const timeout = window.setTimeout(() => {
-      setPlanLoading(true); setPlanError('')
-      void fetch(`${API_URL}/recipes?q=${encodeURIComponent(query)}&limit=8`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal })
-        .then(async response => {
-          if (!response.ok) throw new Error('Resep belum dapat dimuat. Pastikan database dan backend aktif.')
-          const data = await response.json() as { recipes: PlanRecipe[] }
-          setPlanRecipes(data.recipes)
-        })
-        .catch(requestError => { if ((requestError as Error).name !== 'AbortError') setPlanError((requestError as Error).message) })
-        .finally(() => { if (!controller.signal.aborted) setPlanLoading(false) })
-    }, 250)
-    return () => { window.clearTimeout(timeout); controller.abort() }
-  }, [active, planQuery, token])
 
   function resetMealEditor() {
     setShowMeal(false); setEditingMealId(''); setNutritionSuggestions([]); setRecipeSuggestions([]); setSelectedSuggestionName(''); setSelectedMealDetail(null)
+    setManualMealEntry(false)
     setMealForm({ mealType: 'BREAKFAST', name: '', calories: '', protein: '', carbs: '', fat: '' })
   }
   function openNewMeal() {
@@ -192,6 +172,7 @@ function HomeContent() {
     setShowMeal(true)
   }
   function editMeal(meal: Meal) {
+    setManualMealEntry(true)
     setEditingMealId(meal.id); setSelectedSuggestionName(meal.name); setSelectedMealDetail(null); setNutritionSuggestions([]); setRecipeSuggestions([])
     setMealForm({ mealType: meal.mealType, name: meal.name, calories: String(meal.calories), protein: String(meal.protein), carbs: String(meal.carbs), fat: String(meal.fat) })
     setShowMeal(true)
@@ -295,7 +276,6 @@ function HomeContent() {
 
   function selectMenu(label: string) {
     setActive(label); setMobileOpen(false); setSearchOpen(false); setNotificationsOpen(false)
-    if (label === 'Catat Makanan') openNewMeal()
   }
 
   if (!authReady) return <main className="auth-loading"><div className="brand-mark"><Apple size={24} /></div><span>Menyiapkan NutriLife…</span></main>
@@ -315,7 +295,7 @@ function HomeContent() {
   const waterGlasses = Math.round(dashboard.water.consumedMl / 250)
   const targetGlasses = Math.max(1, Math.round(dashboard.water.targetMl / 250))
   const weeklyBars = dashboard.weeklyActivity.length ? dashboard.weeklyActivity : Array.from({ length: 7 }, (_, index) => ({ day: new Date(Date.now() - (6 - index) * 86400000).toISOString(), steps: 0 }))
-  const pageDescriptions: Record<string, string> = { Dashboard: 'Pantau kebiasaan sehatmu hari ini.', 'Catat Makanan': 'Lihat dan tambahkan asupan harianmu.', Aktivitas: 'Catat gerak tubuh dan perkembangan langkahmu.', 'Rencana Makan': 'Menu seimbang yang siap menemani harimu.', 'Target saya': 'Atur sasaran kesehatan sesuai kebutuhanmu.', Bantuan: 'Temukan jawaban atau hubungi tim NutriLife.', Pengaturan: 'Kelola profil dan preferensi aplikasi.' }
+  const pageDescriptions: Record<string, string> = { Dashboard: 'Pantau kebiasaan sehatmu hari ini.', 'Asupan Harian': 'Lihat dan tambahkan asupan harianmu.', Aktivitas: 'Catat gerak tubuh dan perkembangan langkahmu.', 'Target saya': 'Atur sasaran kesehatan sesuai kebutuhanmu.', Bantuan: 'Temukan jawaban atau hubungi tim NutriLife.', Pengaturan: 'Kelola profil dan preferensi aplikasi.' }
 
   return <main className={dark ? 'app-shell dark' : 'app-shell'}>
     <DashboardSidebar user={dashboard.user} active={active} mobileOpen={mobileOpen} collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(collapsed => !collapsed)} onClose={() => setMobileOpen(false)} onNavigate={selectMenu} onLogout={logout} />
@@ -341,11 +321,10 @@ function HomeContent() {
         </>}
         {active !== 'Dashboard' && <div className="section-heading"><p className="eyebrow">{active.toUpperCase()}</p><h2>{active}</h2><p>{pageDescriptions[active]}</p></div>}
 
-        {active === 'Catat Makanan' && <div className="panel page-panel"><div className="panel-title"><div><h3>Catatan makanan hari ini</h3><p>{dashboard.meals.length} makanan · {formatNumber(dashboard.nutrition.calories)} kkal</p></div><button className="primary-btn" onClick={openNewMeal}><Plus size={16} /> Tambah makanan</button></div><div className="record-list">{dashboard.meals.length === 0 && <p className="empty-state">Belum ada makanan. Mulai dengan tombol Tambah makanan.</p>}{dashboard.meals.map(meal => { const style = mealStyles[meal.mealType]; return <div className="record-row" key={meal.id}><div className={`meal-icon ${style[0]}`}>{style[1]}</div><div className="record-copy"><strong>{meal.name}</strong><span>{mealLabels[meal.mealType]} · {new Date(meal.loggedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span></div><div className="record-macros"><span>P {formatNumber(meal.protein)}g</span><span>K {formatNumber(meal.carbs)}g</span><span>L {formatNumber(meal.fat)}g</span><strong>{meal.calories} kkal</strong></div><div className="record-actions"><button type="button" onClick={() => editMeal(meal)} aria-label={`Edit ${meal.name}`}><Edit3 size={14} /> Edit</button><button type="button" className="delete-record" disabled={deletingMealId === meal.id} onClick={() => void deleteMeal(meal)} aria-label={`Hapus ${meal.name}`}><Trash2 size={14} /> {deletingMealId === meal.id ? 'Menghapus…' : 'Hapus'}</button></div></div>})}</div></div>}
+        {active === 'Asupan Harian' && <div className="panel page-panel"><div className="panel-title"><div><h3>Asupan hari ini</h3><p>{dashboard.meals.length} makanan · {formatNumber(dashboard.nutrition.calories)} kkal</p></div><button className="primary-btn" onClick={openNewMeal}><Plus size={16} /> Tambah makanan</button></div><div className="record-list">{dashboard.meals.length === 0 && <p className="empty-state">Belum ada asupan. Mulai dengan tombol Tambah makanan.</p>}{dashboard.meals.map(meal => { const style = mealStyles[meal.mealType]; return <div className="record-row" key={meal.id}><div className={`meal-icon ${style[0]}`}>{style[1]}</div><div className="record-copy"><strong>{meal.name}</strong><span>{mealLabels[meal.mealType]} · {new Date(meal.loggedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span></div><div className="record-macros"><span>P {formatNumber(meal.protein)}g</span><span>K {formatNumber(meal.carbs)}g</span><span>L {formatNumber(meal.fat)}g</span><strong>{meal.calories} kkal</strong></div><div className="record-actions"><button type="button" onClick={() => editMeal(meal)} aria-label={`Edit ${meal.name}`}><Edit3 size={14} /> Edit</button><button type="button" className="delete-record" disabled={deletingMealId === meal.id} onClick={() => void deleteMeal(meal)} aria-label={`Hapus ${meal.name}`}><Trash2 size={14} /> {deletingMealId === meal.id ? 'Menghapus…' : 'Hapus'}</button></div></div>})}</div></div>}
 
         {active === 'Aktivitas' && <><div className="stats-grid activity-stats"><StatCard icon={Footprints} label="Langkah hari ini" value={formatNumber(dashboard.steps.current)} detail={`target ${formatNumber(dashboard.steps.target)} langkah`} progress={percent(dashboard.steps.current, dashboard.steps.target)} accent="green" /><StatCard icon={CalendarDays} label="Target mingguan" value={formatNumber(dashboard.steps.target * 7)} detail="langkah per minggu" progress={percent(weeklyBars.reduce((sum, item) => sum + item.steps, 0), dashboard.steps.target * 7)} accent="lavender" /><StatCard icon={Weight} label="Berat terakhir" value={dashboard.weight.current ? `${formatNumber(dashboard.weight.current)} kg` : '—'} detail={`target ${formatNumber(dashboard.weight.target)} kg`} progress={percent(dashboard.weight.target, dashboard.weight.current || dashboard.weight.target)} accent="blue" /></div><div className="action-row"><button className="primary-btn" onClick={() => setShowActivity(true)}><Plus size={16} /> Catat aktivitas</button><button className="outline-action" onClick={() => setShowWeight(true)}><Weight size={16} /> Catat berat</button></div><div className="panel weekly page-panel"><div className="panel-title"><div><h3>Langkah 7 hari terakhir</h3><p>Perkembangan aktivitas minggu ini</p></div></div><div className="chart large-chart"><div className="y-labels"><span>10k</span><span>7.5k</span><span>5k</span><span>2.5k</span><span>0</span></div><div className="bars">{weeklyBars.map(item => <div className="bar-col" key={item.day}><div className="bar" style={{ height: `${Math.min(100, item.steps / 100)}%` }} /><span>{new Intl.DateTimeFormat('id-ID', { weekday: 'short' }).format(new Date(item.day))}</span></div>)}</div></div></div></>}
 
-        {active === 'Rencana Makan' && <><div className="panel plan-search"><div><h3>Temukan ide menu</h3><p>Rekomendasi berasal dari katalog resep NutriLife.</p></div><label><Search size={16} /><input value={planQuery} onChange={event => setPlanQuery(event.target.value)} placeholder="Cari resep, misalnya ayam atau sayur" /></label></div>{planError && <div className="db-error"><span>{planError}</span><button onClick={() => { setPlanQuery(''); setPlanError('') }}>Coba lagi</button></div>}{planLoading && <p className="empty-state">Mencari resep…</p>}{!planLoading && !planError && planRecipes.length === 0 && <div className="panel empty-state">Belum ada resep yang cocok. Coba kata kunci lain atau impor dataset resep.</div>}<div className="plan-grid">{planRecipes.map((recipe, index) => <div className="panel plan-card" key={recipe.id}><div className={`meal-icon ${['mint', 'gold', 'lilac', 'mint'][index % 4]}`}>{['🥣', '🍱', '🫐', '🍲'][index % 4]}</div><div><span>{recipe.category || 'Resep'}</span><h3>{recipe.title}</h3><p>{recipe.totalIngredients} bahan · {recipe.totalSteps} langkah</p></div><button onClick={() => { setEditingMealId(''); setSelectedSuggestionName(recipe.title); setSelectedMealDetail({ kind: 'recipe', recipe }); setMealForm({ mealType: 'LUNCH', name: recipe.title, calories: '', protein: '', carbs: '', fat: '' }); setShowMeal(true) }}>Lihat resep <ChevronRight size={14} /></button></div>)}</div></>}
 
         {active === 'Target saya' && <form className="panel settings-form" onSubmit={saveGoals}><div className="form-header"><div><h3>Target kesehatan</h3><p>Nilai ini digunakan untuk menghitung semua progress di dashboard.</p></div><button disabled={saving} className="primary-btn"><Save size={16} /> {saving ? 'Menyimpan…' : 'Simpan target'}</button></div><div className="goal-form-grid">{([['CALORIES', 'Kalori harian', 'kkal'], ['WATER', 'Air minum', 'ml'], ['STEPS', 'Langkah', 'langkah'], ['WEIGHT', 'Berat badan', 'kg'], ['PROTEIN', 'Protein', 'g'], ['CARBS', 'Karbohidrat', 'g'], ['FAT', 'Lemak', 'g']] as const).map(([key, label, unit]) => <label key={key}><span>{label}</span><div><input required min="1" step={key === 'WEIGHT' ? '.1' : '1'} type="number" value={goals[key]} onChange={event => setGoals({ ...goals, [key]: event.target.value })} /><small>{unit}</small></div></label>)}</div></form>}
 
@@ -376,24 +355,20 @@ function HomeContent() {
       </div>
     </section>
     {showMeal && <div className="modal-backdrop" onClick={resetMealEditor}>
-      <form className="modal" onSubmit={saveMeal} onClick={event => event.stopPropagation()}>
-        <div className="modal-head"><div><p className="eyebrow">{editingMealId ? 'UBAH CATATAN' : 'CATAT KE DATABASE'}</p><h3>{editingMealId ? 'Edit makanan atau minuman' : 'Tambah makanan atau minuman'}</h3></div><button type="button" className="close-modal" onClick={resetMealEditor}><X size={18} /></button></div>
+      <form className="modal meal-modal" onSubmit={saveMeal} onClick={event => event.stopPropagation()}>
+        <div className="modal-head"><div><h3>{editingMealId ? 'Edit asupan' : 'Tambah asupan harian'}</h3></div><button type="button" className="close-modal" onClick={resetMealEditor}><X size={18} /></button></div>
         <label>Waktu makan<select value={mealForm.mealType} onChange={event => setMealForm({ ...mealForm, mealType: event.target.value as MealType })}>{Object.entries(mealLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
         <label className="recipe-field">Pilih makanan/minuman
-          <span className="field-help">Ketik nama untuk mencari pilihan dari katalog, lalu klik hasilnya. Jika tidak ada, nama bisa diisi manual.</span>
-          <input required minLength={2} autoComplete="off" value={mealForm.name} onChange={event => { setSelectedSuggestionName(''); setSelectedMealDetail(null); setMealForm({ ...mealForm, name: event.target.value }) }} placeholder="Contoh: nasi goreng, tempe, jus jeruk" />
+          <span className="field-help">Cari dan pilih item dari katalog. Data gizinya akan terisi otomatis.</span>
+          <input required minLength={2} autoComplete="off" readOnly={selectedMealDetail?.kind === 'nutrition'} value={mealForm.name} onChange={event => { setSelectedSuggestionName(''); setSelectedMealDetail(null); setManualMealEntry(false); setMealForm({ ...mealForm, name: event.target.value }) }} placeholder="Cari makanan atau minuman" />
           {(nutritionSuggestions.length > 0 || recipeSuggestions.length > 0) && <div className="recipe-suggestions">
-            {nutritionSuggestions.map(item => <button type="button" key={`nutrition-${item.id}`} onClick={() => { const name = `${item.brand} — ${item.name}`; setSelectedSuggestionName(name); setSelectedMealDetail({ kind: 'nutrition', item }); setMealForm({ ...mealForm, name, calories: String(item.calories), protein: String(item.protein), carbs: String(item.carbs), fat: String(item.fat) }); setNutritionSuggestions([]); setRecipeSuggestions([]) }}><strong>{item.kind === 'DRINK' ? '🥤' : '🍽️'} {item.name}<em>Pilih</em></strong><span>{item.brand} · {item.calories} kkal · P {formatNumber(item.protein)}g · K {formatNumber(item.carbs)}g · L {formatNumber(item.fat)}g</span></button>)}
-            {recipeSuggestions.map(recipe => <button type="button" key={`recipe-${recipe.id}`} onClick={() => { setSelectedSuggestionName(recipe.title); setSelectedMealDetail({ kind: 'recipe', recipe }); setMealForm({ ...mealForm, name: recipe.title }); setNutritionSuggestions([]); setRecipeSuggestions([]) }}><strong>📖 {recipe.title}<em>Pilih</em></strong><span>{recipe.category || 'Resep Indonesia'} · {recipe.totalIngredients} bahan · {recipe.totalSteps} langkah</span></button>)}
+            {nutritionSuggestions.map(item => <button type="button" key={`nutrition-${item.id}`} onClick={() => { const name = item.name; setSelectedSuggestionName(name); setSelectedMealDetail({ kind: 'nutrition', item }); setManualMealEntry(false); setMealForm({ ...mealForm, name, calories: String(item.calories), protein: String(item.protein), carbs: String(item.carbs), fat: String(item.fat) }); setNutritionSuggestions([]); setRecipeSuggestions([]) }}><strong>{item.kind === 'DRINK' ? '🥤' : '🍽️'} {item.name}<em>Pilih</em></strong><span>{item.brand} · {item.calories} kkal · P {formatNumber(item.protein)}g · K {formatNumber(item.carbs)}g · L {formatNumber(item.fat)}g</span></button>)}
+            {recipeSuggestions.map(recipe => <button type="button" key={`recipe-${recipe.id}`} onClick={() => { setSelectedSuggestionName(recipe.title); setSelectedMealDetail({ kind: 'recipe', recipe }); setManualMealEntry(true); setMealForm({ ...mealForm, name: recipe.title }); setNutritionSuggestions([]); setRecipeSuggestions([]) }}><strong>📖 {recipe.title}<em>Pilih</em></strong><span>{recipe.category || 'Resep Indonesia'} · {recipe.totalIngredients} bahan · {recipe.totalSteps} langkah</span></button>)}
           </div>}
-          {mealForm.name.trim().length >= 2 && selectedSuggestionName !== mealForm.name && nutritionSuggestions.length === 0 && recipeSuggestions.length === 0 && <small className="recipe-hint">Tidak ada pilihan katalog yang cocok saat ini. Nama akan dicatat sebagai input manual.</small>}
-          {selectedSuggestionName === mealForm.name && <small className="recipe-hint selected-hint">Pilihan katalog digunakan. Kamu tetap dapat mengubah namanya.</small>}
+          {selectedMealDetail?.kind === 'nutrition' && <button type="button" className="change-meal-btn" onClick={() => { setSelectedMealDetail(null); setSelectedSuggestionName(''); setMealForm({ ...mealForm, name: '', calories: '', protein: '', carbs: '', fat: '' }) }}>Pilih item lain</button>}
+          {mealForm.name.trim().length >= 2 && selectedSuggestionName !== mealForm.name && nutritionSuggestions.length === 0 && recipeSuggestions.length === 0 && <div className="manual-entry-prompt"><span>Tidak menemukan item di katalog?</span><button type="button" onClick={() => { setManualMealEntry(true); setSelectedMealDetail(null); setSelectedSuggestionName('') }}>Input manual</button></div>}
         </label>
-        {selectedMealDetail?.kind === 'nutrition' && <div className="meal-detail">
-          <div className="meal-detail-title"><Sparkles size={14} /><strong>Kandungan {selectedMealDetail.item.kind === 'DRINK' ? 'minuman' : 'makanan'}</strong></div>
-          <div className="nutrition-detail-grid"><span>Kalori <strong>{formatNumber(selectedMealDetail.item.calories)} kkal</strong></span><span>Protein <strong>{formatNumber(selectedMealDetail.item.protein)} g</strong></span><span>Karbohidrat <strong>{formatNumber(selectedMealDetail.item.carbs)} g</strong></span><span>Lemak <strong>{formatNumber(selectedMealDetail.item.fat)} g</strong></span><span>Serat <strong>{formatNumber(selectedMealDetail.item.fiber)} g</strong></span><span>Gula <strong>{formatNumber(selectedMealDetail.item.sugar)} g</strong></span><span>Natrium <strong>{formatNumber(selectedMealDetail.item.sodium)} mg</strong></span></div>
-          <small>Nilai nutrisi utama sudah dimasukkan ke form dan tetap bisa disunting.</small>
-        </div>}
+        {selectedMealDetail?.kind === 'nutrition' && <div className="meal-detail catalog-nutrition-summary"><div className="meal-detail-title"><Sparkles size={14} /><strong>Informasi nutrisi per porsi</strong></div><div className="nutrition-detail-grid"><span>Kalori <strong>{formatNumber(selectedMealDetail.item.calories)} kkal</strong></span><span>Protein <strong>{formatNumber(selectedMealDetail.item.protein)} g</strong></span><span>Karbohidrat <strong>{formatNumber(selectedMealDetail.item.carbs)} g</strong></span><span>Lemak <strong>{formatNumber(selectedMealDetail.item.fat)} g</strong></span></div></div>}
         {selectedMealDetail?.kind === 'recipe' && <div className="meal-detail recipe-detail">
           <div className="meal-detail-title"><BookOpen size={14} /><strong>Isi resep · {selectedMealDetail.recipe.totalIngredients} bahan</strong></div>
           {parseRecipeList(selectedMealDetail.recipe.ingredients).length > 0
@@ -401,8 +376,8 @@ function HomeContent() {
             : <small>Daftar bahan resep belum tersedia.</small>}
           <small>Dataset resep belum memuat nilai nutrisi; isi kalori dan makro secara manual.</small>
         </div>}
-        <div className="form-grid"><label>Kalori (kkal)<input required min="0" type="number" value={mealForm.calories} onChange={event => setMealForm({ ...mealForm, calories: event.target.value })} placeholder="0" /></label><label>Protein (g)<input min="0" step="0.1" type="number" value={mealForm.protein} onChange={event => setMealForm({ ...mealForm, protein: event.target.value })} placeholder="0" /></label><label>Karbo (g)<input min="0" step="0.1" type="number" value={mealForm.carbs} onChange={event => setMealForm({ ...mealForm, carbs: event.target.value })} placeholder="0" /></label><label>Lemak (g)<input min="0" step="0.1" type="number" value={mealForm.fat} onChange={event => setMealForm({ ...mealForm, fat: event.target.value })} placeholder="0" /></label></div>
-        <button disabled={saving} className="primary-btn full">{saving ? 'Menyimpan…' : editingMealId ? 'Simpan perubahan' : 'Simpan makanan/minuman'}</button>
+        {manualMealEntry && <div className="manual-nutrition-fields"><p>Masukkan nilai gizi asupan ini.</p><div className="form-grid"><label>Kalori (kkal)<input required min="0" type="number" value={mealForm.calories} onChange={event => setMealForm({ ...mealForm, calories: event.target.value })} placeholder="0" /></label><label>Protein (g)<input min="0" step="0.1" type="number" value={mealForm.protein} onChange={event => setMealForm({ ...mealForm, protein: event.target.value })} placeholder="0" /></label><label>Karbo (g)<input min="0" step="0.1" type="number" value={mealForm.carbs} onChange={event => setMealForm({ ...mealForm, carbs: event.target.value })} placeholder="0" /></label><label>Lemak (g)<input min="0" step="0.1" type="number" value={mealForm.fat} onChange={event => setMealForm({ ...mealForm, fat: event.target.value })} placeholder="0" /></label></div></div>}
+        <button disabled={saving || (!manualMealEntry && selectedMealDetail?.kind !== 'nutrition') || (manualMealEntry && !mealForm.calories)} className="primary-btn full">{saving ? 'Menyimpan…' : editingMealId ? 'Simpan perubahan' : 'Simpan asupan'}</button>
       </form>
     </div>}
     {showActivity && <div className="modal-backdrop" onClick={() => setShowActivity(false)}><form className="modal" onSubmit={saveActivity} onClick={event => event.stopPropagation()}><div className="modal-head"><div><p className="eyebrow">CATAT KE DATABASE</p><h3>Tambah aktivitas</h3></div><button type="button" className="close-modal" onClick={() => setShowActivity(false)}><X size={18} /></button></div><label>Jenis aktivitas<input required minLength={2} value={activityForm.activityType} onChange={event => setActivityForm({ ...activityForm, activityType: event.target.value })} placeholder="Contoh: Berjalan" /></label><div className="form-grid"><label>Langkah<input required min="0" type="number" value={activityForm.steps} onChange={event => setActivityForm({ ...activityForm, steps: event.target.value })} placeholder="0" /></label><label>Durasi (menit)<input min="0" type="number" value={activityForm.duration} onChange={event => setActivityForm({ ...activityForm, duration: event.target.value })} placeholder="0" /></label><label>Kalori terbakar<input min="0" type="number" value={activityForm.calories} onChange={event => setActivityForm({ ...activityForm, calories: event.target.value })} placeholder="0" /></label></div><button disabled={saving} className="primary-btn full">{saving ? 'Menyimpan…' : 'Simpan aktivitas'}</button></form></div>}

@@ -9,9 +9,8 @@ type AdminSection = 'articles' | 'staff' | 'catalog' | 'recipes'
 
 const mainItems = [
   { label: 'Dashboard', icon: LayoutDashboard },
-  { label: 'Catat Makanan', icon: Utensils },
+  { label: 'Asupan Harian', icon: Utensils },
   { label: 'Aktivitas', icon: Activity },
-  { label: 'Rencana Makan', icon: Apple },
 ]
 const otherItems = [
   { label: 'Target saya', icon: Target },
@@ -64,12 +63,17 @@ export function DashboardSidebar({ user, active, activeAdmin, mobileOpen, collap
       <p className="nav-caption second">LAINNYA</p>
       <nav>
         {renderDashboardItem(otherItems[0])}
-        {['ADMIN', 'NUTRITIONIST'].includes(user.role) && <Link href="/articles/admin" className={activeAdmin === 'articles' ? 'nav-item admin-link active' : 'nav-item admin-link'} onClick={onClose}><BookOpen size={18} />Kelola Artikel &amp; Berita</Link>}
-        {user.role === 'ADMIN' && <Link href="/admin/users" className={activeAdmin === 'staff' ? 'nav-item admin-link active' : 'nav-item admin-link'} onClick={onClose}><UsersRound size={18} />Kelola akun staf</Link>}
-        {user.role === 'ADMIN' && <Link href="/admin/catalog" className={activeAdmin === 'catalog' ? 'nav-item admin-link active' : 'nav-item admin-link'} onClick={onClose}><Salad size={18} />Katalog makanan</Link>}
-        {user.role === 'ADMIN' && <Link href="/admin/recipes" className={activeAdmin === 'recipes' ? 'nav-item admin-link active' : 'nav-item admin-link'} onClick={onClose}><ChefHat size={18} />Kelola resep</Link>}
         {otherItems.slice(1).map(renderDashboardItem)}
       </nav>
+      {(['ADMIN', 'NUTRITIONIST'].includes(user.role)) && <>
+      <p className="nav-caption second">PENGELOLAAN</p>
+      <nav>
+        {['ADMIN', 'NUTRITIONIST'].includes(user.role) && <Link href="/articles/admin" className={activeAdmin === 'articles' ? 'nav-item admin-link active' : 'nav-item admin-link'} onClick={onClose}><BookOpen size={18} />Kelola Artikel &amp; Berita</Link>}
+        {user.role === 'ADMIN' && <Link href="/admin/users" className={activeAdmin === 'staff' ? 'nav-item admin-link active' : 'nav-item admin-link'} onClick={onClose}><UsersRound size={18} />Kelola akun staf</Link>}
+        {user.role === 'ADMIN' && <Link href="/admin/catalog" className={activeAdmin === 'catalog' ? 'nav-item admin-link active' : 'nav-item admin-link'} onClick={onClose}><Salad size={18} />Katalog gizi</Link>}
+        {user.role === 'ADMIN' && <Link href="/admin/recipes" className={activeAdmin === 'recipes' ? 'nav-item admin-link active' : 'nav-item admin-link'} onClick={onClose}><ChefHat size={18} />Kelola resep</Link>}
+      </nav>
+      </>}
       <div className="sidebar-bottom"><button className="coach-card" onClick={() => onNavigate ? navigate('Bantuan') : window.location.assign(dashboardHref('Bantuan'))}><Sparkles size={18} /><div><strong>Butuh arahan?</strong><small>Konsultasi dengan nutritionist kami.</small></div><ChevronRight size={15} /></button><button className="logout" onClick={logout}><LogOut size={17} /> Keluar</button></div>
     </aside>
   </>

@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { ArrowLeft, Edit3, Plus, Salad, Search, ShieldCheck, Trash2, X } from 'lucide-react'
 import { FormEvent, useEffect, useState } from 'react'
 
+const PAGE_SIZE = 10
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4004/api/v1'
 const TOKEN_KEY = 'nutrilife_auth_token'
 type User = { id: string; name: string; email: string; role: 'USER' | 'NUTRITIONIST' | 'ADMIN' }
@@ -17,6 +19,8 @@ export default function CatalogManagementPage() {
   const [token, setToken] = useState('')
   const [user, setUser] = useState<User | null>(null)
   const [items, setItems] = useState<Item[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [activeTab, setActiveTab] = useState<'add' | 'list'>('add')
   const [form, setForm] = useState<ItemForm>(blank)
   const [query, setQuery] = useState('')
   const [editing, setEditing] = useState('')
@@ -49,9 +53,11 @@ export default function CatalogManagementPage() {
     const data = await response.json().catch(() => ({})) as { items?: Item[]; message?: string }
     if (!response.ok) throw new Error(data.message || 'Katalog tidak dapat dimuat.')
     setItems(data.items ?? [])
+    setCurrentPage(1)
   }
 
   function beginEdit(item: Item) {
+    setActiveTab('add')
     setEditing(item.id)
     setForm({ name: item.name, brand: item.brand, kind: item.kind, calories: item.calories, protein: item.protein, carbs: item.carbs, fat: item.fat, fiber: item.fiber, sugar: item.sugar, sodium: item.sodium })
     setError(''); setMessage(''); window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -90,11 +96,18 @@ export default function CatalogManagementPage() {
   if (!user) return <main className="article-page-shell"><div className="article-page-container"><div className="admin-access-card"><h1>Katalog makanan &amp; minuman</h1><p>Silakan masuk menggunakan akun Admin.</p><Link href="/" className="primary-btn">Masuk melalui dashboard</Link></div></div></main>
   if (user.role !== 'ADMIN') return <main className="article-page-shell"><div className="article-page-container"><Link href="/" className="article-back"><ArrowLeft size={17} /> Kembali ke dashboard</Link><div className="admin-access-card"><h1>Akses ditolak</h1><p>Hanya Admin yang dapat mengelola katalog makanan dan minuman.</p></div></div></main>
 
+  const pageCount = Math.ceil(items.length / PAGE_SIZE)
+  const visibleItems = items.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+
   return <AdminRouteShell user={user} active="catalog"><main className="article-page-shell"><div className="article-page-container admin-article-page">
     <div className="article-toolbar"><div className="staff-toolbar-actions"><Link href="/admin/users" className="secondary-btn">Kelola akun staf</Link><span className="admin-role-badge">ADMIN</span></div></div>
     <header className="article-hero admin-hero"><span className="article-kicker">NUTRITION CATALOG</span><h1>Katalog Makanan &amp; Minuman</h1><p>Kelola pilihan yang muncul saat pengguna mencari makanan untuk dicatat.</p></header>
     {error && <div className="panel error">{error}</div>}{message && <div className="panel success"><ShieldCheck size={17} /> {message}</div>}
-    <section className="panel admin-panel"><div className="admin-panel-heading"><span><Plus size={18} /></span><div><h2>{editing ? 'Ubah item katalog' : 'Tambah item katalog'}</h2><p>Masukkan kandungan gizi per porsi yang ditampilkan kepada pengguna.</p></div></div>
+    <div className="catalog-tabs" role="tablist" aria-label="Kelola katalog">
+      <button type="button" role="tab" aria-selected={activeTab === 'add'} className={activeTab === 'add' ? 'active' : ''} onClick={() => setActiveTab('add')}><Plus size={16} />{editing ? 'Ubah item' : 'Tambah item'}</button>
+      <button type="button" role="tab" aria-selected={activeTab === 'list'} className={activeTab === 'list' ? 'active' : ''} onClick={() => { setActiveTab('list'); setEditing('') }}><Salad size={16} />Daftar item ({items.length})</button>
+    </div>
+    {activeTab === 'add' && <section className="panel admin-panel"><div className="admin-panel-heading"><span><Plus size={18} /></span><div><h2>{editing ? 'Ubah item katalog' : 'Tambah item katalog'}</h2><p>Masukkan kandungan gizi per porsi yang ditampilkan kepada pengguna.</p></div></div>
       <form className="admin-form-grid" onSubmit={saveItem}>
         <label>Nama makanan/minuman<input required minLength={2} maxLength={255} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} placeholder="Contoh: Nasi goreng" /></label>
         <label>Merek / sumber<input required value={form.brand} onChange={event => setForm({ ...form, brand: event.target.value })} placeholder="Contoh: Buatan sendiri" /></label>
@@ -102,12 +115,17 @@ export default function CatalogManagementPage() {
         {nutritionFields.map(([key, label]) => <label key={key}>{label}<input required min="0" step={key === 'calories' ? '1' : '0.1'} type="number" value={form[key]} onChange={event => setForm({ ...form, [key]: Number(event.target.value) })} /></label>)}
         <div className="form-actions"><button className="primary-btn" disabled={saving}>{saving ? 'Menyimpan…' : editing ? 'Simpan perubahan' : 'Tambahkan ke katalog'}</button>{editing && <button type="button" className="secondary-btn" onClick={resetForm}>Batal</button>}</div>
       </form>
-    </section>
-    <section className="panel admin-panel"><div className="catalog-list-heading"><div className="admin-panel-heading"><span><Salad size={18} /></span><div><h2>Daftar item ({items.length})</h2><p>Item di sini tersedia sebagai pilihan pada pencatatan makanan.</p></div></div><form className="catalog-search" onSubmit={event => { event.preventDefault(); void loadItems(token, query).catch(reason => setError(reason.message)) }}><Search size={16} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Cari nama atau merek" /><button className="secondary-btn">Cari</button></form></div>
+    </section>}
+    {activeTab === 'list' && <section className="panel admin-panel"><div className="catalog-list-heading"><div className="admin-panel-heading"><span><Salad size={18} /></span><div><h2>Daftar item ({items.length})</h2><p>Item di sini tersedia sebagai pilihan pada pencatatan makanan.</p></div></div><form className="catalog-search" onSubmit={event => { event.preventDefault(); void loadItems(token, query).catch(reason => setError(reason.message)) }}><Search size={16} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Cari nama atau merek" /><button className="secondary-btn">Cari</button></form></div>
       <div className="catalog-table-wrap"><table className="admin-table"><thead><tr><th>Nama</th><th>Merek / sumber</th><th>Jenis</th><th>Kalori</th><th>Protein</th><th>Karbo</th><th>Lemak</th><th>Aksi</th></tr></thead><tbody>
-        {items.map(item => <tr key={item.id}><td><strong>{item.name}</strong></td><td>{item.brand}</td><td>{item.kind === 'FOOD' ? 'Makanan' : 'Minuman'}</td><td>{item.calories} kkal</td><td>{item.protein} g</td><td>{item.carbs} g</td><td>{item.fat} g</td><td><div className="table-actions"><button className="edit-action" type="button" onClick={() => beginEdit(item)}><Edit3 size={14} /> Edit</button><button className="delete-action" type="button" disabled={saving} onClick={() => void deleteItem(item)}><Trash2 size={14} /> Hapus</button></div></td></tr>)}
+        {visibleItems.map(item => <tr key={item.id}><td><strong>{item.name}</strong></td><td>{item.brand}</td><td>{item.kind === 'FOOD' ? 'Makanan' : 'Minuman'}</td><td>{item.calories} kkal</td><td>{item.protein} g</td><td>{item.carbs} g</td><td>{item.fat} g</td><td><div className="table-actions"><button className="edit-action" type="button" onClick={() => beginEdit(item)}><Edit3 size={14} /> Edit</button><button className="delete-action" type="button" disabled={saving} onClick={() => void deleteItem(item)}><Trash2 size={14} /> Hapus</button></div></td></tr>)}
         {!items.length && <tr><td colSpan={8} className="staff-empty">Belum ada item katalog yang cocok.</td></tr>}
       </tbody></table></div>
-    </section>
+      {pageCount > 1 && <nav className="catalog-pagination" aria-label="Halaman katalog">
+        <button type="button" className="secondary-btn" disabled={currentPage === 1} onClick={() => setCurrentPage(page => page - 1)}>Sebelumnya</button>
+        {Array.from({ length: pageCount }, (_, index) => index + 1).map(page => <button key={page} type="button" className={`catalog-page-number${currentPage === page ? ' active' : ''}`} aria-current={currentPage === page ? 'page' : undefined} onClick={() => setCurrentPage(page)}>{page}</button>)}
+        <button type="button" className="secondary-btn" disabled={currentPage === pageCount} onClick={() => setCurrentPage(page => page + 1)}>Berikutnya</button>
+      </nav>}
+    </section>}
   </div></main></AdminRouteShell>
 }
