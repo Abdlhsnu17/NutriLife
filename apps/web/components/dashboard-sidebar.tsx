@@ -35,8 +35,6 @@ function dashboardHref(label: string) {
 }
 
 export function DashboardSidebar({ user, active, activeAdmin, mobileOpen, collapsed = false, onToggleCollapse, onClose, onNavigate, onLogout }: DashboardSidebarProps) {
-  const initials = user.name.split(' ').map(word => word[0]).slice(0, 2).join('').toUpperCase()
-  const avatar = <div className="avatar">{user.avatarUrl ? <img src={user.avatarUrl} alt="" /> : initials}</div>
   const navigate = (label: string) => { onNavigate?.(label); onClose() }
   const logout = () => {
     if (onLogout) onLogout()
@@ -55,9 +53,6 @@ export function DashboardSidebar({ user, active, activeAdmin, mobileOpen, collap
     {mobileOpen && <button className="sidebar-backdrop" aria-label="Tutup menu" onClick={onClose} />}
     <aside className={sidebarClassName}>
       <div className="brand"><div className="brand-identity"><div className="brand-mark"><Apple size={19} /></div><span>Nutri<span>Life</span></span></div>{onToggleCollapse && <button className="sidebar-toggle" onClick={onToggleCollapse} aria-label={collapsed ? 'Buka sidebar' : 'Ciutkan sidebar'} aria-expanded={!collapsed} title={collapsed ? 'Buka sidebar' : 'Ciutkan sidebar'}><Menu size={18} /></button>}<button className="close-mobile" onClick={onClose} aria-label="Tutup menu"><X size={18} /></button></div>
-      {onNavigate
-        ? <button className="workspace" onClick={() => navigate('Pengaturan')}>{avatar}<div><strong>{user.name}</strong><small>Personal space</small></div><ChevronRight size={16} className="muted" /></button>
-        : <Link href={dashboardHref('Pengaturan')} className="workspace sidebar-workspace-link" onClick={onClose}>{avatar}<div><strong>{user.name}</strong><small>Personal space</small></div><ChevronRight size={16} className="muted" /></Link>}
       <p className="nav-caption">MENU UTAMA</p>
       <nav>{mainItems.map(renderDashboardItem)}</nav>
       <p className="nav-caption second">LAINNYA</p>
